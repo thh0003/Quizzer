@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<jardesc>
+    <jar path="P:/GIT-HUB/CS533/quizzer/Quizzer-nonexec.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/Quizzer/doc/description.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
+    <selectedProjects/>
+    <manifest generateManifest="true" mainClassHandleIdentifier="=Quizzer/src&lt;quizzer{startQuizzer.java[startQuizzer" manifestLocation="/Quizzer/doc/quizzer" manifestVersion="1.0" reuseManifest="false" saveManifest="true" usesManifest="true">
+        <sealing sealJar="false">
+            <packagesToSeal/>
+            <packagesToUnSeal/>
+        </sealing>
+    </manifest>
+    <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
+        <javaElement handleIdentifier="=org.eclipse.swt"/>
+        <javaElement handleIdentifier="=Quizzer"/>
+    </selectedElements>
+</jardesc>

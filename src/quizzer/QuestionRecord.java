@@ -51,26 +51,6 @@ public class QuestionRecord
         return answerNumber;
     }
 
-    /**
-     * Displays the question, choices and correct answer
-     * @return the question record in readable form
-     */
-    public String toString()
-    {
-        StringBuffer sBuffer = new StringBuffer();
-        String CRLF = "\r\n";
 
-        sBuffer.append( "Question: " + question + CRLF  + CRLF );
-
-        sBuffer.append( "Choices: " + CRLF );
-        for( int i=0; i<choices.length; i++ )
-        {
-            sBuffer.append( (i+1) + ": " + choices[i] + CRLF );
-        }
-
-        sBuffer.append( CRLF + "Answer: " + choices[ answerNumber-1 ] + CRLF );
-
-        return sBuffer.toString();
-    }
 }
 

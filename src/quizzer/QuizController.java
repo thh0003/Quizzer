@@ -8,10 +8,7 @@ package quizzer;
  * @version 1.0
  */
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.text.NumberFormat;
 import java.util.Vector;
 
 public class QuizController
@@ -32,10 +29,111 @@ public class QuizController
     private int     asked       = 0;
     private int     correct     = 0;
     private long    startTime   = 0;
+    private String questionResult="";
+	private int curAnswer=0;
+	private int selectedAnswer=0;
+	private int qState=0;
 
     private QuestionFileReader  qFileReader;
 
-    /**
+	public int getqState() {
+		return qState;
+	}
+
+	public void setqState(int qState) {
+		this.qState = qState;
+	}
+
+	public int getSelectedAnswer() {
+		return selectedAnswer;
+	}
+
+	public void setSelectedAnswer(int selectedAnswer) {
+		this.selectedAnswer = selectedAnswer;
+	}
+
+	public int getCurAnswer() {
+		return curAnswer;
+	}
+
+	public void setCurAnswer(int curAnswer) {
+		this.curAnswer = curAnswer;
+	}
+
+	public boolean isShowAnswers() {
+		return showAnswers;
+	}
+
+	public void setShowAnswers(boolean showAnswers) {
+		this.showAnswers = showAnswers;
+	}
+	
+
+	public String getquestionResult() {
+		return this.questionResult;
+	}
+
+	public void setquestionResult(String questionResult) {
+		this.questionResult = questionResult;
+	}
+	
+	public int getqCount() {
+		return qCount;
+	}
+
+	public void setqCount(int qCount) {
+		this.qCount = qCount;
+	}
+
+	public File getqFile() {
+		return qFile;
+	}
+
+	public void setqFile(File qFile) {
+		this.qFile = qFile;
+	}
+
+	public int getAsked() {
+		return asked;
+	}
+
+	public void setAsked(int asked) {
+		this.asked = asked;
+	}
+	
+	public void incAsked() {
+		this.asked++;
+	}
+
+	public int getCorrect() {
+		return correct;
+	}
+
+	public void setCorrect(int correct) {
+		this.correct = correct;
+	}
+	
+	public void incCorrect() {
+		this.correct++;
+	}
+
+	public long getStartTime() {
+		return startTime;
+	}
+
+	public void setStartTime(long startTime) {
+		this.startTime = startTime;
+	}
+
+	public QuestionFileReader getqFileReader() {
+		return qFileReader;
+	}
+
+	public void setqFileReader(QuestionFileReader qFileReader) {
+		this.qFileReader = qFileReader;
+	}
+
+	/**
      * Constructor
      * @param qCount The number of questions to be asked in the quiz
      * @param qFilename The name of the quiz file containing quiz questions and
@@ -82,7 +180,6 @@ answers
         this.qFile          = qFile;
         this.showAnswers    = showAnswers;
 
-        initialize();
     }
 
     /**
@@ -91,250 +188,50 @@ QuizFileReader.
      *  Exits the program if there is a problem reading or indexing the file.
 This normally means that
      *  the quiz file is an invalid format.
+     * @throws Exception 
      */
-    private void initialize()
+    public Boolean initialize() throws Exception
     {
-        if( qCount < 1 )
-        {
-            exit( "Invalid question count: " + qCount + ". You must ask at least one question" );
-        }
-
-        if( qFile == null )
-        {
-            exit( "Invalid quiz file" );
-        }
-
-        if( !qFile.exists()
-         || !qFile.isFile() )
-        {
-            exit( "Invalid quiz file: " + qFile );
-        }
-
-        QuestionFileIndexer qFileIndexer = new QuestionFileIndexer( qFile );
-
-        boolean fileIndexed = qFileIndexer.indexFile();
-        if( !fileIndexed )
-        {
-            exit( "Unable to read quiz file: " + qFile +". It may be in an invalid format." );
-        }
-
-        Vector<QuestionIndex> qFileIndex = qFileIndexer.getQuestionFileIndex();
-
-        if( qCount > qFileIndex.size() )
-        {
-            output( "The quiz file contained only " + qFileIndex.size() + "questions." + QuizzerProperties.EOL
-                  + "Use a larger quiz file of you want to ask " + qCount + "questions." + QuizzerProperties.EOL );
-        }
-
-        qFileReader = new QuestionFileReader( qFile, qFileIndex );
+    	try {
+	        if( qCount < 1 )
+	        {
+	            throw new Exception( "Invalid question count: " + qCount + ". You must ask at least one question" );
+	        }
+	
+	        if( qFile == null )
+	        {
+	        	throw new Exception( "Invalid quiz file" );
+	        }
+	
+	        if( !qFile.exists()
+	         || !qFile.isFile() )
+	        {
+	        	throw new Exception( "Invalid quiz file: " + qFile );
+	        }
+	
+	        QuestionFileIndexer qFileIndexer = new QuestionFileIndexer( qFile );
+	
+	        boolean fileIndexed = qFileIndexer.indexFile();
+	        if( !fileIndexed )
+	        {
+	        	throw new Exception( "Unable to read quiz file: " + qFile +". It may be in an invalid format." );
+	        }
+	
+	        Vector<QuestionIndex> qFileIndex = qFileIndexer.getQuestionFileIndex();
+	
+	        if( qCount > qFileIndex.size() )
+	        {
+	        	throw new Exception( "The quiz file contained only " + qFileIndex.size() + "questions." + QuizzerProperties.EOL
+	                  + "Use a larger quiz file of you want to ask " + qCount + "questions." + QuizzerProperties.EOL );
+	        }
+	
+	        qFileReader = new QuestionFileReader( qFile, qFileIndex );
+	        return true;
+    	} catch(Exception Error) {
+    		throw Error;
+    	}
     }
 
-    /**
-     * Method to start the quiz. The method begins the main quiz control loop.
-It will ask <i>qCount</i>
-     * questions or will end when there are no more questions available.
-     */
-    public void quiz()
-    {
-
-        QuestionRecord qRecord = null;
-
-        intro();
-
-        startTime = System.currentTimeMillis();
-
-        while( true )
-        {
-            if( asked >= qCount )
-            {
-                results();
-            }
-
-            try
-            {
-                qRecord = qFileReader.getQuestionRecord();
-            }
-            catch( Exception e )
-            {
-                e.printStackTrace();
-                output( "Error reading quiz file. Printing results and exiting"
-);
-                results();
-            }
-
-            if( qRecord == null )
-            {
-                //no more questions, show results
-                results();
-            }
-
-            showQuestion( qRecord );
-            asked++;
-
-            int answer = getAnswer( qRecord.getChoices().length );
-            if( answer == qRecord.getAnswerNumber() )
-            {
-                correct++;
-                output( QuizzerProperties.EOL + "CORRECT!" );
-            }
-            else
-            {
-                if( showAnswers )
-                {
-                    output( QuizzerProperties.EOL + "Incorrect, the correct answer was " + qRecord.getAnswerNumber() + "." );
-                }
-                else
-                {
-                    output( QuizzerProperties.EOL + "Incorrect." );
-                }
-            }
-        }
-    }
-
-    /**
-     * Display an introductory message to standard output.
-     */
-    private void intro()
-    {
-        output( QuizzerProperties.EOL + INTRO_MESSAGE );
-    }
-
-    /**
-     * Displays a questions to standard output.
-     * @param qRecord An object containing the current question, choices and
-correct answer
-     */
-    private void showQuestion( QuestionRecord qRecord )
-    {
-        output( QuizzerProperties.EOL );
-
-        output( "Question " + (asked+1) );
-        output( qRecord.getQuestion() );
-
-        String [] choices = qRecord.getChoices();
-        for( int i=0; i<choices.length; i++ )
-        {
-            output( (i+1) + ": " + choices[i] );
-        }
-
-        output( QuizzerProperties.EOL );
-    }
-
-    /**
-     * Reads the user's answer choice from the standard input. Displays error
-messages for invalid
-     * choices and allows user to exit program.
-     * @param the index of the highest answer.
-     * @return The user's answer choice
-     */
-    private int getAnswer( int highest )
-    {
-        int answer = -1;
-
-        try
-        {
-            BufferedReader reader = new BufferedReader( new InputStreamReader( System.in ) );
-            String line = null;
-            while( true )
-            {
-                output( "Select your answer (Type 'Q' to exit): " );
-
-                line = reader.readLine();
-                line = line.trim().toLowerCase();
-
-                if( line.equals( "q" )
-                 || line.equals( "quit" ) )
-                {
-                    results();
-                }
-
-                try
-                {
-                    answer = Integer.parseInt( line );
-                    if( answer > 0 && answer <= highest )
-                    {
-                        break;
-                    }
-                }
-                catch( NumberFormatException nfe )
-                {
-                }
-
-                output( "You must enter a number between 1-" + highest + "." );
-            }
-        }
-        catch( Exception e )
-        {
-            e.printStackTrace();
-        }
-
-        return answer;
-    }
-
-    /**
-     * Displays a message to the standard output. Uses println, so each message
-ends with a NEWLINE
-     * @param message The message to be displayed
-     */
-    private void output( String message )
-    {
-        System.out.println( message );
-    }
-
-    /**
-     * Calculates and displays the results of the quiz.
-     */
-    private void results()
-    {
-        output( QuizzerProperties.EOL );
-
-        float percentage = (float) correct / (float) asked;
-        percentage = percentage * 100;
-
-        NumberFormat numberFormat = NumberFormat.getInstance();
-        numberFormat.setMinimumFractionDigits( 1 );
-        String formattedPercentage = numberFormat.format( percentage );
-
-        String formattedElapsedTime = null;
-        long elapsedTime = System.currentTimeMillis() - startTime;
-        if( (elapsedTime / 1000) > 60 )
-        {
-            long minutes = (elapsedTime / 1000) / 60;
-            long seconds = (elapsedTime / 1000) % 60;
-            formattedElapsedTime = new String( minutes + " minutes " + seconds
-+ " seconds " );
-        }
-        else
-        {
-            formattedElapsedTime = new String( (elapsedTime / 1000) + " seconds" );
-        }
-
-        output( "Results:" );
-        output( "You correctly answered " + correct + " of " + asked + " questions." );
-        output( "Percentage: " + formattedPercentage + "%" );
-        output( "Elapsed Time: " + formattedElapsedTime + " (" + elapsedTime +" milliseconds)" );
-
-        output( QuizzerProperties.EOL );
-
-        exit( "Quiz Complete." );
-    }
-
-    /**
-     * Displays and information message to standard output and exits the
-program
-     * This could also be where any cleanup would occur. Currently no cleanup
-is needed.
-     * @param exitMessage Information message displayed before exit.
-     */
-    private void exit( String exitMessage )
-    {
-        System.out.println( exitMessage + QuizzerProperties.EOL );
-        System.out.flush();
-
-        //cleanup??
-
-        System.exit( 0 );
-    }
 }
 
    

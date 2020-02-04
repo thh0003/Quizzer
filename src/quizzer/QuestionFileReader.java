@@ -63,7 +63,8 @@ questions and answer choices.
         int byteLength = (int)(qEnd - qStart);
         byte[] Questionbytes = new byte[byteLength];
         Vector<Long> ansVector = questionIndex.getAnswerVector();
-        int bytesRead = 0;
+        @SuppressWarnings("unused")
+		int bytesRead = 0;
         String question;
         String choices[] = null;
         int answerNumber = 0;
@@ -80,9 +81,9 @@ questions and answer choices.
 
         //Get Choices
         choices = new String[ansVector.size()-1];
-        for (int x=1; x<ansVector.size()-1; x++){
+        for (int x=1; x<ansVector.size(); x++){
             raf.seek(ansVector.get(x));
-            choices[x] = raf.readLine().trim();
+            choices[x-1] = Integer.toString(x)+") "+raf.readLine().trim();
         }
 
         raf.close();
