@@ -2,6 +2,7 @@ package quizzer;
 
 
 import java.io.File;
+import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
@@ -60,7 +61,7 @@ public class Quizzer
     	quizShell = new Shell(quizDisplay);
 
     }
-
+    
     public void startQuiz() {
 		GridLayout gridLayout = new GridLayout (3, false);
 		quizShell.setLayout (gridLayout);

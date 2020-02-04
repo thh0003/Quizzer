@@ -1,5 +1,7 @@
 package quizzer;
 
+
+
 public class startQuizzer{
 /**
      * The main method for invoking Quizzer.
@@ -10,6 +12,7 @@ public class startQuizzer{
         try
         {
         	Quizzer quiz = new Quizzer();
+//        	QuizzerProperties.envQuiz();
             quiz.startQuiz();
 
         }
