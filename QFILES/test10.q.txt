@@ -1,0 +1,139 @@
+* TEST FILE FOR QUIZ
+* Jim Mooney
+* THIS FILE CONTAINS 10 QUESTIONS
+
+* CS 533, Spring 2011
+
+* This is a question file for the quiz program.
+* Any line that begins with an asterisk should be ignored.
+* Totally empty lines should also be ignored.
+
+@Q 01
+File: 10 question file
+This is question number 1.
+What is the answer?
+@A
+1
+First answer to question 1.
+Second answer to question 1.
+Third answer to question 1.
+Fourth answer to question 1.
+Fifth answer to question 1.
+@E
+
+@Q 02
+File: 10 question file
+This is question number 2.
+What is the answer?
+@A
+2
+First answer to question 2.
+Second answer to question 2.
+Third answer to question 2.
+Fourth answer to question 2.
+Fifth answer to question 2.
+@E
+
+@Q 03
+File: 10 question file
+This is question number 3.
+What is the answer?
+@A
+3
+First answer to question 3.
+Second answer to question 3.
+Third answer to question 3.
+Fourth answer to question 3.
+Fifth answer to question 3.
+@E
+
+@Q 04
+File: 10 question file
+This is question number 4.
+What is the answer?
+@A
+4
+First answer to question 4.
+Second answer to question 4.
+Third answer to question 4.
+Fourth answer to question 4.
+Fifth answer to question 4.
+@E
+
+@Q 05
+File: 10 question file
+This is question number 5.
+What is the answer?
+@A
+5
+First answer to question 5.
+Second answer to question 5.
+Third answer to question 5.
+Fourth answer to question 5.
+Fifth answer to question 5.
+@E
+
+@Q 06
+File: 10 question file
+This is question number 6.
+What is the answer?
+@A
+1
+First answer to question 6.
+Second answer to question 6.
+Third answer to question 6.
+Fourth answer to question 6.
+Fifth answer to question 6.
+@E
+
+@Q 07
+File: 10 question file
+This is question number 7.
+What is the answer?
+@A
+2
+First answer to question 7.
+Second answer to question 7.
+Third answer to question 7.
+Fourth answer to question 7.
+Fifth answer to question 7.
+@E
+
+@Q 08
+File: 10 question file
+This is question number 8.
+What is the answer?
+@A
+3
+First answer to question 8.
+Second answer to question 8.
+Third answer to question 8.
+Fourth answer to question 8.
+Fifth answer to question 8.
+@E
+
+@Q 09
+File: 10 question file
+This is question number 9.
+What is the answer?
+@A
+4
+First answer to question 9.
+Second answer to question 9.
+Third answer to question 9.
+Fourth answer to question 9.
+Fifth answer to question 9.
+@E
+
+@Q 10
+File: 10 question file
+This is question number 10.
+What is the answer?
+@A
+5
+First answer to question 10.
+Second answer to question 10.
+Third answer to question 10.
+Fourth answer to question 10.
+Fifth answer to question 10.
+@E
