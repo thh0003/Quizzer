@@ -21,7 +21,7 @@ public class QuizzerProperties
     //WINDOWS ENVIRONMENT VARIABLES
     public static String ALLUSERSPROFILE            = System.getenv("ALLUSERSPROFILE").replace("\\", "\\\\");
     public static String SystemDrive             	= System.getenv("SystemDrive").replace("\\", "\\\\");
-    public static String JRE_HOME             		= System.getenv("JRE_HOME").replace("\\", "\\\\");
+//    public static String JRE_HOME             		= System.getenv("JRE_HOME").replace("\\", "\\\\");
 //    public static String USERNAME             		= System.getenv("USERNAME"); //use java version
     public static String ProgramFilesPath      		= System.getenv("ProgramFiles(x86)").replace("\\", "\\\\");
     public static String ProgramDataPath      		= System.getenv("ProgramData").replace("\\", "\\\\");
@@ -88,14 +88,6 @@ public class QuizzerProperties
     public static String DEBUG_FILE                 = QUIZZER_DIR + File.separator + "debug.txt";
     public static String DEFAULT_Q_FILE             = QUIZZER_DIR + File.separator + "QFILES" + File.separator + "test10.q.txt";
     
-    
-    
-    public QuizzerProperties()
-    {
-    	
-    	
-    	
-    }
     
     public static void envQuiz() {
     	

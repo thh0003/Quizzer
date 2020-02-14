@@ -2,8 +2,6 @@ package quizzer;
 
 
 import java.io.File;
-import java.util.Map;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
@@ -70,8 +68,10 @@ public class Quizzer
 		GridData data = new GridData (SWT.NONE, SWT.TOP, true, false, 3, 3);
 		quizShell.setText(QuizzerProperties.TITLE);
 		quizShell.setLayoutData(data);
-		Image wvuImage = new Image(quizDisplay,QuizzerProperties.QUIZZER_DIR + File.separator + "media" + File.separator + QuizzerProperties.BACKGROUND_IMAGE_FILE);
-		Image wvuLogo = new Image(quizDisplay,QuizzerProperties.QUIZZER_DIR + File.separator + "media" + File.separator + QuizzerProperties.LOGO_FILE);
+//		Image wvuImage = new Image(quizDisplay,QuizzerProperties.QUIZZER_DIR + File.separator + "media" + File.separator + QuizzerProperties.BACKGROUND_IMAGE_FILE);
+//		Image wvuLogo = new Image(quizDisplay,QuizzerProperties.QUIZZER_DIR + File.separator + "media" + File.separator + QuizzerProperties.LOGO_FILE);
+		Image wvuImage = new Image(quizDisplay,"media" + File.separator + QuizzerProperties.BACKGROUND_IMAGE_FILE);
+		Image wvuLogo = new Image(quizDisplay,"media" + File.separator + QuizzerProperties.LOGO_FILE);
 		Image halfWVULogo = new Image(quizDisplay, wvuLogo.getImageData().scaledTo(40,40));
 		quizShell.setBackgroundImage(wvuImage);
 		Label quizzerLogo = new Label (quizShell, SWT.SHADOW_NONE | SWT.WRAP);

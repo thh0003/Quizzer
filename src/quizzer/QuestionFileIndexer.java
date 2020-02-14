@@ -69,7 +69,10 @@ public class QuestionFileIndexer
                         if (line.startsWith(QuizzerProperties.Q_START)) {
                             // question start
                             status = 1;
-
+                            int lineLen = line.replaceAll("\\W", "").length();
+                            if (lineLen > 75) {
+	                            System.out.println("Question: "+ line.replaceAll("\\W", "") +" Line Length: "+ Integer.toString(lineLen));
+                            }
                             qStart = raf.getFilePointer();
                         } else {
                             System.err.println("QuestionFileReader: unexpected input: " + line);
@@ -77,7 +80,11 @@ public class QuestionFileIndexer
                     } else if (status == 1) {
 
                         // reading question, checking for answer start
-
+                        int lineLen = line.replaceAll("\\W", "").length();
+                        if (lineLen > 75) {
+                            System.out.println("Question: "+ line.replaceAll("\\W", "") +" Line Length: "+ Integer.toString(lineLen));
+                        }
+                    	
                         if (line.startsWith(QuizzerProperties.A_START)) {
                             // question end, answer start
                             status = 2;
