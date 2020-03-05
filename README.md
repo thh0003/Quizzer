@@ -1,22 +1,89 @@
 # Quizzer
 # Java Quiz Application
 
-### West Virginia Univeristy - CS - Software Portablility - Programming Assignment #1
+### West Virginia Univeristy - CS - Software Portablility - Programming Assignment #2
 
 ##### Quizzer - Description
 
 Quizzer is a Java application which will take a file with questions and run a quiz based on those questions.
 
-#### Installation Requirements
-1. At least Microsoft Windows 7 64-Bit operating system
-2. The 64-Bit Java Runtime Environment (JRE) version 1.8 or greater needs to be installed
-	a) If you do not have or do not know if you have the JRE installed goto https://www.java.com/en/download/windows-64bit.jsp to download and install it.
-	b) To determine what version you have installed perform the following commands:
-		1) Press "Windows-R" - to open the "Run" diaglog
-		2) Enter "cmd" and press "Enter" to start a command terminal
-		3) Type "java -version"
-		4) You should see a response simialr to:
-		java version "<<Java Version>>" <<Release Date>>
-		Java(TM) SE Runtime Environment (build <<JRE Version>>)
-		Java HotSpot(TM) 64-Bit Server VM (build <<VM Version>>, mixed mode, sharing)
-		5) Confirm your JRE Version is at least 12
+To run a quiz:
+1) Change to the directory of the Quizzer application
+2) Type: ./Quizzer.run (If command line arguments are not set, the default quiz will run)
+3) Command Line Options:
+		Quizzer [-h] [-n count] [-a show_answers] [-q quiz_file] [-g gui]
+		-h : This help message
+		-n : Integer - The number of questions in the quiz
+		-a : Yes|No|Y|N - Option to show the correct answer to incorrect questions
+		-q : String - Specify a quiz file with questions
+		-g : Yes|No|Y|N - Enable a graphic user interface.  Default is No. And is disabled when a desktop environment is unavailable
+
+NOTE 2: Sample question files are located in the QFILES subfolder.
+
+Below is the format of a Question File.
+
+#### Sample Quiz File Format
+* SAMPLE QUIZ QUESTIONS
+* Jim Mooney
+* CS 533
+* Fall 2011
+
+* This is a question file for the quiz program.
+* Any line that begins with an asterisk should be ignored.
+* Totally blank lines should also be ignored.
+
+* The file consists of a sequence of questions.
+* Each question has the following form:
+*
+*	1. A line beginning with "@Q".
+*	2. Up to ten lines giving the text of the question.
+*	3. A line beginning with "@A"
+*	4. A line consisting of the integer value for the correct answer
+*	5. Up to ten lines giving answer choices, one line each.
+*	6. A line beginning with "@E".
+*
+* The question file has the form of a sequence of variable-length
+* text lines, Each containing 75 characters or fewer.  The character
+* code and the detailed form of the file (line terminators, etc.) are
+* those conventional for the system on which it is installed.
+*
+* The following example file contains two questions.  The first has
+* four possible answers; the correct answer is the second.  The second
+* has six possible answers; the correct answer is the fourth.
+
+@QUESTIONS
+How many class days are there in this entire term?
+@ANSWERS
+2
+forty-one
+twenty-nine
+seems like hundreds
+who's counting?
+@END
+
+@QUESTION
+
+This is a long question which rambles on with no apparent end in sight.
+It has two purposes.  The first is to catch those of you who have not
+provided enough buffer space for a very long question.  The second is to
+ask you to figure out how many letters there are (not counting spaces or
+punctuation marks) in this entire paragraph.
+
+@ANSWERS
+4
+509
+266
+1066
+263
+None of the above
+All of the above
+@END
+* Remember: blank lines and comments are ignored throughout!
+
+* END OF FILE
+
+
+
+
+
+
