@@ -1,7 +1,11 @@
 package quizzer;
 
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.text.NumberFormat;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
@@ -23,10 +27,9 @@ import org.eclipse.swt.widgets.Text;
 
 /**
  * <p>Title: Quizzer</p>
- * <p>Description: Starting class for Quizzer. Parses command line
-arguments and starts QuizController to begin quiz.</p>
+ * <p>Description: Starting class for Quizzer. Parses command line arguments and starts QuizController to begin quiz.</p>
  * @author Corey Wineman; adapted by Jim Mooney; and by Trevor Holmes
- * @version 1.0
+ * @version 1.1
  */
 
 
@@ -39,9 +42,31 @@ public class Quizzer
     public String  qFilename;
     
     public Display quizDisplay;
+    
     public Shell quizShell;
+    
     private QuizController qc = null;
+    
     private Boolean quizStart=false;
+	
+    private CliParser cliargs; //command line argument parser class
+
+	private boolean qGUI;
+	
+//	private String helpMsg = "";
+    public final String helpMsg =
+            "Quizzer [-h] [-n count] [-a show_answers] [-q quiz_file] [-g gui]"
+            + QuizzerProperties.EOL
+            + "-h : This help message"
+            + QuizzerProperties.EOL
+            + "-n : Integer - The number of questions in the quiz"
+            + QuizzerProperties.EOL
+            + "-a : Yes|No|Y|N - Option to show the correct answer to incorrect questions"
+            + QuizzerProperties.EOL
+            + "-q : String - Specify a quiz file with questions"
+            + QuizzerProperties.EOL
+            + "-g : Yes|No|Y|N - Enable a graphic user interface.  Default is No. And is disabled when a desktop environment is unavailable";
+
 
     /**
      * Constructor, main class for Quizzer. Parses command line options
@@ -50,50 +75,357 @@ public class Quizzer
      * Parsing will fail if the quiz filename is not the last argument.
      * @param args Command line arguments
      */
-    public Quizzer()
+    public Quizzer( String [] args )
     {
-    	qCount = QuizzerProperties.DEFAULT_Q_COUNT;
-    	showAnswers = QuizzerProperties.SHOW_ANSWERS;
-    	qFilename = QuizzerProperties.DEFAULT_Q_FILE;
-    	quizDisplay = new Display ();
-    	quizShell = new Shell(quizDisplay);
+    	this.qGUI = QuizzerProperties.GUI;
+    	this.qCount = QuizzerProperties.DEFAULT_Q_COUNT;
+    	this.showAnswers = QuizzerProperties.SHOW_ANSWERS;
+    	this.qFilename = QuizzerProperties.DEFAULT_Q_FILE;
 
+    	if (this.qGUI) {
+	    	this.quizDisplay = new Display ();
+	    	this.quizShell = new Shell(quizDisplay);
+    	}
+
+    	if (!this.parseArguments(args)) {
+    		exit( "Invalid Command Line Arguments" );
+    	}
     }
     
+    /**
+     * Displays and information message to standard output and exits the program
+     * This could also be where any cleanup would occur. Currently no cleanup is needed.
+     * @param exitMessage Information message displayed before exit.
+     */
+    private void exit( String exitMessage )
+    {
+        System.out.println( exitMessage + QuizzerProperties.EOL );
+        System.out.flush();
+
+        //cleanup??
+
+        System.exit( 0 );
+    }
+    
+    /**
+     * Parses the command line arguments. Any unexpected or invalid
+     * argument will cause the parsing to fail.
+     * @param args Command line arguments
+     * @return whether or not the command line arguments were valid
+     * and successfully parsed.
+     * 
+     * show_answers = (y|n|yes|no) show answers to incorrect choices
+     * gui = (y|n|yes|no) show answers to incorrect choices
+     */
+	private boolean parseArguments( String [] args )
+    {
+		try {
+			boolean g2g = true;
+			this.cliargs = new CliParser(args);
+
+			//Check the possible command line arguments
+			if (this.cliargs.switchPresent("-h")) {
+				exit (helpMsg);
+			}
+			
+			//Check the possible command line arguments
+			if (this.cliargs.switchPresent("-q")) {
+				String argFilename = this.cliargs.switchValue("-q");
+				if (argFilename == null || argFilename.length()==0 ) {
+					g2g=false;
+					output("Invalid Question File");
+				} else {
+					this.qFilename =argFilename;
+				}
+			}
+			
+			if (this.cliargs.switchPresent("-n")) {
+				int argCount = Integer.parseInt(this.cliargs.switchValue("-n"));
+				
+				//check the count is within limits
+				if (argCount > 0 && argCount <= QuizzerProperties.MAX_QUESTIONS) {
+					this.qCount = argCount;
+				} else{
+					output("Question count must be between 1 and "+ QuizzerProperties.MAX_QUESTIONS);
+					g2g = false;	
+				}	
+			}
+			
+			if (this.cliargs.switchPresent("-a")) {
+				String argShow = this.cliargs.switchValue("-a").toLowerCase();
+				switch (argShow) {
+					case "yes": this.showAnswers = true;
+								break;
+					case "y": this.showAnswers = true;
+							  break;
+					case "no": this.showAnswers = false;
+							   break;
+					case "n": this.showAnswers = false;
+							  break;
+					default: g2g = false;
+							 output("ShowAnswer option can be yes|no|y|n");
+							 break;
+				}
+			}
+			
+			if (this.cliargs.switchPresent("-g")) {
+				String argGUI = this.cliargs.switchValue("-g").toLowerCase();
+				if (QuizzerProperties.osName.startsWith("Linux")) {
+					this.qGUI = false;
+				} else {
+					switch (argGUI) {
+						case "yes": this.qGUI = true;
+									break;
+						case "y": this.qGUI = true;
+								  break;
+						case "no": this.qGUI = false;
+								   break;
+						case "n": this.qGUI = false;
+								  break;
+						default: g2g = false;
+								 output("GUI option can be yes|no|y|n");
+								 break;
+					}
+				}
+				
+			}
+	        return g2g;
+		}catch( Exception e )
+        {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public void startQuiz() {
-		GridLayout gridLayout = new GridLayout (3, false);
-		quizShell.setLayout (gridLayout);
-		quizShell.setSize(QuizzerProperties.INITIAL_WIDTH, QuizzerProperties.INITIAL_HEIGHT);
-		
-		GridData data = new GridData (SWT.NONE, SWT.TOP, true, false, 3, 3);
-		quizShell.setText(QuizzerProperties.TITLE);
-		quizShell.setLayoutData(data);
-//		Image wvuImage = new Image(quizDisplay,QuizzerProperties.QUIZZER_DIR + File.separator + "media" + File.separator + QuizzerProperties.BACKGROUND_IMAGE_FILE);
-//		Image wvuLogo = new Image(quizDisplay,QuizzerProperties.QUIZZER_DIR + File.separator + "media" + File.separator + QuizzerProperties.LOGO_FILE);
-		Image wvuImage = new Image(quizDisplay,"media" + File.separator + QuizzerProperties.BACKGROUND_IMAGE_FILE);
-		Image wvuLogo = new Image(quizDisplay,"media" + File.separator + QuizzerProperties.LOGO_FILE);
-		Image halfWVULogo = new Image(quizDisplay, wvuLogo.getImageData().scaledTo(40,40));
-		quizShell.setBackgroundImage(wvuImage);
-		Label quizzerLogo = new Label (quizShell, SWT.SHADOW_NONE | SWT.WRAP);
-		quizzerLogo.setImage(halfWVULogo);
-		data = new GridData (SWT.BEGINNING, SWT.TOP, true, false, 1, 1);
-		quizzerLogo.setLayoutData (data);
-		
-		Label quizzerWelcom = new Label (quizShell, SWT.SHADOW_NONE | SWT.WRAP);
-		quizzerWelcom.setText (QuizzerProperties.WELCOME);
-		data = new GridData (SWT.BEGINNING, SWT.TOP, true, false, 2, 1);
-		quizzerWelcom.setLayoutData (data);
-		quizShell.open();
-      	startScreen(quizDisplay);
-        
-        while (!quizShell.isDisposed()) {
-            if (!quizDisplay.readAndDispatch()) {
-            	quizDisplay.sleep();
+    	if (this.qGUI) {
+	    	GridLayout gridLayout = new GridLayout (3, false);
+			quizShell.setLayout (gridLayout);
+			quizShell.setSize(QuizzerProperties.INITIAL_WIDTH, QuizzerProperties.INITIAL_HEIGHT);
+			
+			GridData data = new GridData (SWT.NONE, SWT.TOP, true, false, 3, 3);
+			quizShell.setText(QuizzerProperties.TITLE);
+			quizShell.setLayoutData(data);
+			Image wvuImage = new Image(quizDisplay,"media" + File.separator + QuizzerProperties.BACKGROUND_IMAGE_FILE);
+			Image wvuLogo = new Image(quizDisplay,"media" + File.separator + QuizzerProperties.LOGO_FILE);
+			Image halfWVULogo = new Image(quizDisplay, wvuLogo.getImageData().scaledTo(40,40));
+			quizShell.setBackgroundImage(wvuImage);
+			Label quizzerLogo = new Label (quizShell, SWT.SHADOW_NONE | SWT.WRAP);
+			quizzerLogo.setImage(halfWVULogo);
+			data = new GridData (SWT.BEGINNING, SWT.TOP, true, false, 1, 1);
+			quizzerLogo.setLayoutData (data);
+			
+			Label quizzerWelcom = new Label (quizShell, SWT.SHADOW_NONE | SWT.WRAP);
+			quizzerWelcom.setText (QuizzerProperties.WELCOME);
+			data = new GridData (SWT.BEGINNING, SWT.TOP, true, false, 2, 1);
+			quizzerWelcom.setLayoutData (data);
+			quizShell.open();
+	      	startScreen(quizDisplay);
+	        
+	        while (!quizShell.isDisposed()) {
+	            if (!quizDisplay.readAndDispatch()) {
+	            	quizDisplay.sleep();
+	            }
+	        }
+	        
+	        quizDisplay.dispose();
+    	} else {
+    		this.runTxtQuiz();
+    	}
+    
+    }
+    
+    /**
+     * Calculates and displays the results of the quiz.
+     */
+    private void quizTextResults()
+    {
+        output( QuizzerProperties.EOL );
+        int correct = qc.getCorrect();
+        int asked = qc.getAsked();
+        float percentage = (float) correct / (float) asked;
+        percentage = percentage * 100;
+
+        NumberFormat numberFormat = NumberFormat.getInstance();
+        numberFormat.setMinimumFractionDigits( 1 );
+        String formattedPercentage = numberFormat.format( percentage );
+
+        String formattedElapsedTime = null;
+        long elapsedTime = System.currentTimeMillis() - qc.getStartTime();
+        if( (elapsedTime / 1000) > 60 )
+        {
+            long minutes = (elapsedTime / 1000) / 60;
+            long seconds = (elapsedTime / 1000) % 60;
+            formattedElapsedTime = new String( minutes + " minutes " + seconds + " seconds " );
+        }
+        else
+        {
+            formattedElapsedTime = new String( (elapsedTime / 1000) + "seconds" );
+        }
+
+        output( "Results:" );
+        output( "You correctly answered " + correct + " of " + asked + " questions." );
+        output( "Percentage: " + formattedPercentage + "%" );
+        output( "Elapsed Time: " + formattedElapsedTime + " (" + elapsedTime +" milliseconds)" );
+
+        output( QuizzerProperties.EOL );
+
+        exit( "Quiz Complete." );
+    }
+    
+    /*
+     * Run a text version of the quiz
+     * */
+    public void runTxtQuiz() {
+    	try {
+    		if (qc == null) {
+				qc = new QuizController(qCount, qFilename, showAnswers);
+				quizStart = qc.initialize();
+			}
+
+    		int asked = qc.getAsked();
+    		int correct = qc.getCorrect();
+    		
+	    	QuestionRecord qRecord = null;
+	    	
+	    	this.intro();
+	    	qc.setStartTime(System.currentTimeMillis());
+	    	
+	    	while (true) {
+	
+			    			
+				if( asked >= qCount )
+	            {
+	                this.quizTextResults();
+	            }
+				
+				try
+	            {
+	                qRecord = qc.getqFileReader().getQuestionRecord();
+	            }
+	            catch( Exception e )
+	            {
+	                this.quizTextResults();
+	            }
+				
+				if( qRecord == null )
+	            {
+	                //no more questions, show results
+					this.quizTextResults();
+	            }
+	        	
+				showQuestion( qRecord );
+				asked++;
+	            qc.setAsked(asked);
+	            
+	            int answer = getAnswer(qRecord.getChoices().length);
+	            if (answer == qRecord.getAnswerNumber() ) {
+	            	correct++;
+	            	qc.setCorrect(correct);
+	            	output( QuizzerProperties.EOL + "CORRECT!" );
+	            } else {
+	            	if( showAnswers )
+	                {
+	                    output( QuizzerProperties.EOL + "Incorrect, the correct	answer was " + qRecord.getAnswerNumber() + "." );
+	                }
+	                else
+	                {
+	                    output( QuizzerProperties.EOL + "Incorrect." );
+	                }	
+	            }
+	    	}
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    		this.quizTextResults();
+    	}
+    }
+
+    /**
+     * Reads the user's answer choice from the standard input. Displays error messages for invalid
+     * choices and allows user to exit program.
+     * @param the index of the highest answer.
+     * @return The user's answer choice
+     */
+    private int getAnswer( int highest )
+    {
+        int answer = -1;
+
+        try
+        {
+            BufferedReader reader = new BufferedReader( new InputStreamReader(System.in ) );
+            String line = null;
+            while( true )
+            {
+                output( "Select your answer (Type 'Q' to exit): " );
+
+                line = reader.readLine();
+                line = line.trim().toLowerCase();
+
+                if( line.equals( "q" ) || line.equals( "quit" ) )
+                {
+                	this.quizTextResults();
+                }
+
+                try
+                {
+                    answer = Integer.parseInt( line );
+                    if( answer > 0 && answer <= highest )
+                    {
+                        break;
+                    }
+                }
+                catch( NumberFormatException nfe )
+                {
+                }
+
+                output( "You must enter a number between 1-" + highest + "." );
             }
         }
-        
-        quizDisplay.dispose();
-	
+        catch( Exception e )
+        {
+            e.printStackTrace();
+        }
+
+        return answer;
+    }    
+    
+    /**
+     * Displays a questions to standard output.
+     * @param qRecord An object containing the current question, choices and correct answer
+     */
+    private void showQuestion( QuestionRecord qRecord )
+    {
+    	int asked = qc.getAsked();
+        output( QuizzerProperties.EOL );
+
+        output( "Question " + (asked+1) );
+        output( qRecord.getQuestion() );
+
+        String [] choices = qRecord.getChoices();
+        for( int i=0; i<choices.length; i++ )
+        {
+//            output( (i+1) + ": " + choices[i] );
+            output( choices[i] );
+        }
+
+        output( QuizzerProperties.EOL );
+    }    
+    
+    /**
+     * Display an introductory message to standard output.
+     */
+    private void intro()
+    {
+        this.output( QuizzerProperties.EOL + this.qc.INTRO_MESSAGE );
+    }
+    
+    /**
+     * Displays a message to the standard output. Uses println, so each message ends with a NEWLINE
+     * @param message The message to be displayed
+     */
+    private void output( String message )
+    {
+        System.out.println( message );
     }
     
     private void quizRestart() {

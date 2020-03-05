@@ -13,7 +13,7 @@ import java.util.Vector;
 
 public class QuizController
 {
-    public static final String INTRO_MESSAGE =
+    public final String INTRO_MESSAGE =
             "CS 533 Assignment 1 - Quiz Program"
             + QuizzerProperties.EOL
             + QuizzerProperties.AUTHOR

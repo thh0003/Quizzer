@@ -59,6 +59,7 @@ public class QuestionFileIndexer
             QuestionIndex qIndex = null;
 
             int status = 0; // 0 = default, 1 = question, 2 = answer
+            int lineLen =0;
 
             while ((line = raf.readLine()) != null) {
 
@@ -69,30 +70,33 @@ public class QuestionFileIndexer
                         if (line.startsWith(QuizzerProperties.Q_START)) {
                             // question start
                             status = 1;
-                            int lineLen = line.replaceAll("\\W", "").length();
-                            if (lineLen > 75) {
-	                            System.out.println("Question: "+ line.replaceAll("\\W", "") +" Line Length: "+ Integer.toString(lineLen));
+                            lineLen = line.replaceAll("\\W", "").length();
+                            if (lineLen <= QuizzerProperties.MAX_CHARS_PER_LINE) {
+                            	qStart = raf.getFilePointer();	
+                            } else {
+                            	raf.close();
+                            	throw (new Error("Question Length ("+lineLen+") is greater than Maximum Question Length: "+QuizzerProperties.MAX_CHARS_PER_LINE));
                             }
-                            qStart = raf.getFilePointer();
+                            
                         } else {
                             System.err.println("QuestionFileReader: unexpected input: " + line);
                         }
                     } else if (status == 1) {
 
                         // reading question, checking for answer start
-                        int lineLen = line.replaceAll("\\W", "").length();
-                        if (lineLen > 75) {
-                            System.out.println("Question: "+ line.replaceAll("\\W", "") +" Line Length: "+ Integer.toString(lineLen));
-                        }
-                    	
-                        if (line.startsWith(QuizzerProperties.A_START)) {
-                            // question end, answer start
-                            status = 2;
-
-                            qIndex = new QuestionIndex(qStart, qEnd);
+                        lineLen = line.replaceAll("\\W", "").length();
+                        if (lineLen <= 75) {
+	                        if (line.startsWith(QuizzerProperties.A_START)) {
+	                            // question end, answer start
+	                            status = 2;
+	                            qIndex = new QuestionIndex(qStart, qEnd);
+	                        } else {
+	                            // keep track of end of last part of question
+	                            qEnd = raf.getFilePointer();
+	                        }
                         } else {
-                            // keep track of end of last part of question
-                            qEnd = raf.getFilePointer();
+                        	raf.close();
+                        	throw (new Error("Question Length ("+lineLen+") is greater than Maximum Question Length: "+QuizzerProperties.MAX_CHARS_PER_LINE));
                         }
                     } else {
                         // reading answer, checking for answer end
