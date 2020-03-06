@@ -5,6 +5,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.text.NumberFormat;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
@@ -24,6 +27,9 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
+
+import kong.unirest.GenericType;
+import kong.unirest.Unirest;
 
 /**
  * <p>Title: Quizzer</p>
@@ -47,15 +53,31 @@ public class Quizzer
     
     public long timelimit;
     
+    public long stopTime;
+    
     private QuizController qc = null;
     
     private Boolean quizStart=false;
+    public Boolean quizStopped=false;
 	
     private CliParser cliargs; //command line argument parser class
+	private QuizUser quizUser;
+	private QuizResult[] qResults;
     
-    private QuizHistory quizHist;
-
 	private boolean qGUI;
+	
+	Timer quizTimer = new Timer();
+	TimerTask qtTask = new TimerTask() {
+		
+		public void run() {
+			if (!quizStopped) {
+				output("Time is UP! put down your pencils!");
+				quizTextResults();
+			} else {
+				 System.exit( 0 );
+			}
+		}
+	};
 	
 //	private String helpMsg = "";
     public final String helpMsg =
@@ -90,7 +112,14 @@ public class Quizzer
     	this.qCount = QuizzerProperties.DEFAULT_Q_COUNT;
     	this.showAnswers = QuizzerProperties.SHOW_ANSWERS;
     	this.qFilename = QuizzerProperties.DEFAULT_Q_FILE;
-    	this.timelimit = QuizzerProperties.TIME_LIMIT;
+    	this.timelimit = QuizzerProperties.TIME_LIMIT*1000;
+    	this.quizUser = Unirest.get(QuizzerProperties.API_URL+"qq/userLookup/"+QuizzerProperties.userName).asObject(QuizUser.class).getBody();
+    	if (this.quizUser.getQU_ROLE().equals("ADMIN")) {
+    		
+    		this.qResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookupAll/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
+    	} else {
+    		this.qResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookup/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
+    	}
     	
 
     	if (this.qGUI) {
@@ -101,6 +130,7 @@ public class Quizzer
     	if (!this.parseArguments(args)) {
     		exit( "Invalid Command Line Arguments" );
     	}
+    	
     }
     
     /**
@@ -173,7 +203,7 @@ public class Quizzer
 				
 				//check the count is within limits
 				if (argLimit > 0 ) {
-					this.timelimit = argLimit;
+					this.timelimit = argLimit*1000;
 				} else{
 					output("The time limit must be greater than 0 ");
 					g2g = false;	
@@ -273,10 +303,10 @@ public class Quizzer
         output( QuizzerProperties.EOL );
         int correct = qc.getCorrect();
         int asked = qc.getAsked();
-        QuizResult[] quizResults = qc.getQuizResults();
+//        QuizResult[] quizResults = qc.getQuizResults();
         QuizResult curQuiz = new QuizResult();
         
-        float percentage = (float) correct / (float) asked;
+        float percentage = (float) correct / (float) qCount;
         percentage = percentage * 100;
 
         NumberFormat numberFormat = NumberFormat.getInstance();
@@ -297,13 +327,16 @@ public class Quizzer
         }
 
         output( "Results:" );
-        output( "You correctly answered " + correct + " of " + asked + " questions." );
+        output( "Your quiz contained " + qCount + " questions "+ QuizzerProperties.EOL );
+        output( "You were asked  " + asked + " questions "+ QuizzerProperties.EOL );
+        output( "You correctly answered " + correct +" questions." );
         output( "Percentage: " + formattedPercentage + "%" );
         output( "Elapsed Time: " + formattedElapsedTime + " (" + elapsedTime +" milliseconds)" );
 
         output( QuizzerProperties.EOL );
-        curQuiz.setQRdata((qGUI)?1:0, QuizzerProperties.osName, asked, correct, elapsedTime, qc.getStartTime(), this.qFilename, qc.getQuizUser().getQU_LOGIN());
+        curQuiz.setQRdata((qGUI)?1:0, QuizzerProperties.osName, asked, correct, elapsedTime, qc.getStartTime(), this.qFilename, quizUser.getQU_LOGIN());
         curQuiz.saveQR();
+//        logReport();
         exit( "Quiz Complete." );
     }
     
@@ -313,24 +346,26 @@ public class Quizzer
     public void runTxtQuiz() {
     	try {
     		if (qc == null) {
-				qc = new QuizController(qCount, qFilename, showAnswers);
+				qc = new QuizController(qCount, qFilename, showAnswers, timelimit);
 				quizStart = qc.initialize();
 			}
 
     		int asked = qc.getAsked();
     		int correct = qc.getCorrect();
-    		
-	    	QuestionRecord qRecord = null;
+    		QuestionRecord qRecord = null;
 	    	
 	    	this.intro();
 	    	
 	    	qc.setStartTime(System.currentTimeMillis());
-	    	
-	    	while (true) {
-	
+	    	if (qc.getTimeLimit()>0) {
+	    		quizTimer.schedule(qtTask, timelimit);
+	    	}
+
+	    	while ( true ) {
 			    			
 				if( asked >= qCount )
 	            {
+			        quizStopped=true;
 	                this.quizTextResults();
 	            }
 				
@@ -340,12 +375,14 @@ public class Quizzer
 	            }
 	            catch( Exception e )
 	            {
+	                quizStopped=true;
 	                this.quizTextResults();
 	            }
 				
 				if( qRecord == null )
 	            {
 	                //no more questions, show results
+			        quizStopped=true;
 					this.quizTextResults();
 	            }
 	        	
@@ -452,7 +489,7 @@ public class Quizzer
     private void intro()
     {
         this.output( QuizzerProperties.EOL + this.qc.INTRO_MESSAGE );
-        this.output( QuizzerProperties.EOL + "Hello "+ qc.getQuizUser().getQU_LOGIN() + " You have taken: "+ qc.getQuizResults().length +" Quizes" );
+        this.output( QuizzerProperties.EOL + "Hello "+ quizUser.getQU_LOGIN() + " You have taken: "+ qResults.length +" Quizes" );
     }
     
     /**
@@ -461,7 +498,64 @@ public class Quizzer
      */
     private void logReport( )
     {
-        System.out.println( "LogReport");
+    	//QuizResult[] quizResults = qc.getQuizResults();
+        this.output( "LogReport for User: "+ quizUser.getQU_LOGIN());
+        this.output( quizUser.getQU_LOGIN()+" has taken a total of "+ qResults.length +" Quizes");
+        //Generate History Report
+        String reportHeader = "";
+        String reportBody = "";
+        int[] columnWidth = new int[10];
+        String[] columnHeaders = {
+        		" USER ", " TEST ID ", " ASKED ", " CORRECT ", " SCORE ", " DURATION ", "QUIZ DATE", " QUIZ FILE "," OPERATING SYSTEM ", " GUI "
+        };
+
+        for (int y=0;y<columnHeaders.length;y++) {
+        	columnWidth[y] = columnHeaders[y].length();
+        }
+        
+        int totalWidth = 0;
+        for (int x=0;x<qResults.length;x++) {
+//        	output (String.valueOf(columnHeaders[0].length()));
+//        	output (qResults[x].getUser());
+        	
+        	columnWidth[0] = (columnWidth[0]>=(qResults[x].getUser().length()+2))?columnWidth[0]:(qResults[x].getUser().length()+2);
+        	columnWidth[1] = (columnWidth[1]>=(String.valueOf(qResults[x].getQQH_ID()).length()+2))?columnWidth[1]:(String.valueOf(qResults[x].getQQH_ID()).length()+2);
+        	columnWidth[2] = (columnWidth[2]>=(String.valueOf(qResults[x].getQQH_ASKED()).length()+2))?columnWidth[2]:(String.valueOf(qResults[x].getQQH_ASKED()).length()+2);
+        	columnWidth[3] = (columnWidth[3]>=(String.valueOf(qResults[x].getQQH_CORRECT()).length()+2))?columnWidth[3]:(String.valueOf(qResults[x].getQQH_CORRECT()).length()+2);
+        	columnWidth[6] = 15;
+        	columnWidth[7] = (columnWidth[7]>=(qResults[x].getQQH_QUIZ_FILE().length()+2))?columnWidth[7]:(qResults[x].getQQH_QUIZ_FILE().length()+2);
+        }
+
+        for (int y=0;y<columnWidth.length;y++) {
+        	totalWidth = totalWidth + columnWidth[y] + 2;
+        }
+        
+        reportHeader = 	reportHeader + "-" + String.format("%"+String.valueOf(totalWidth)+"d", 0).replace(" ", "-").replace("0", "")+QuizzerProperties.EOL;
+//        				+"|"+String.format("%"+String.valueOf(totalWidth)+"d", 0).replace("0", "")+"|"+QuizzerProperties.EOL;
+
+        for (int x=0;x<columnHeaders.length;x++) {
+        	reportHeader = reportHeader+ String.format("|%"+String.valueOf(columnWidth[x])+"s|", columnHeaders[x]);
+        }
+        
+        reportHeader = reportHeader +QuizzerProperties.EOL+ "-" + String.format("%"+String.valueOf(totalWidth)+"d", 0).replace(" ", "-").replace("0", "")+QuizzerProperties.EOL;
+        
+        for (int x=0;x<qResults.length;x++) {
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[0])+"s|", qResults[x].getUser());
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[1])+"d|", qResults[x].getQQH_ID());
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[2])+"d|", qResults[x].getQQH_ASKED());
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[3])+"d|", qResults[x].getQQH_CORRECT());
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[4]-1)+".2f%%|", ((float)qResults[x].getQQH_CORRECT()/(float)this.qCount)*100);
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[5])+".2f|", ((float)qResults[x].getQQH_DURATION()/1000));
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[6])+"TF|", (new Date(qResults[x].getQQH_START_TS())));
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[7])+"s|", qResults[x].getQQH_QUIZ_FILE());
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[8])+"s|", qResults[x].getQQH_OS());
+        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[9])+"b|", ((qResults[x].getQQH_GUI()==0)?false:true));
+        	
+        	reportBody = reportBody+QuizzerProperties.EOL;
+        }
+        output(reportHeader);
+        output(reportBody);
+        
     }
     
     /**
@@ -660,7 +754,7 @@ public class Quizzer
     	
     	try {
     		if (qc == null) {
-    			qc = new QuizController(qCount, qFilename, showAnswers);
+    			qc = new QuizController(qCount, qFilename, showAnswers,timelimit);
     			quizStart = qc.initialize();
     		}
 

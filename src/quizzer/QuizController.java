@@ -43,6 +43,37 @@ public class QuizController
 
     private QuestionFileReader  qFileReader;
 
+    /**
+     * Constructor
+     * @param qCount The number of questions to be asked in the quiz
+     * @param qFile A File object containing quiz questions and answers
+     * @param showAnswers Toggle to determine if answers are shown
+     * for incorrect selections
+     */
+    public QuizController( int qCount, String qFile, boolean showAnswers, long timeLimit  )
+    {
+    	this(qCount,new File(qFile),showAnswers,timeLimit);
+    }
+
+    
+    /**
+     * Constructor
+     * @param qCount The number of questions to be asked in the quiz
+     * @param qFile A File object containing quiz questions and answers
+     * @param showAnswers Toggle to determine if answers are shown
+     * for incorrect selections
+     */
+    public QuizController( int qCount, File qFile, boolean showAnswers, long timeLimit  )
+    {
+        this.qCount         = qCount;
+        this.qFile          = qFile;
+        this.showAnswers    = showAnswers;
+        this.timeLimit		= timeLimit*1000;
+        this.quizUser = Unirest.get(QuizzerProperties.API_URL+"qq/userLookup/"+QuizzerProperties.userName).asObject(QuizUser.class).getBody();
+    	this.quizResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookup/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
+    }
+
+    
 	public int getqState() {
 		return qState;
 	}
@@ -140,55 +171,6 @@ public class QuizController
 		this.qFileReader = qFileReader;
 	}
 
-	/**
-     * Constructor
-     * @param qCount The number of questions to be asked in the quiz
-     * @param qFilename The name of the quiz file containing quiz questions and
-answers
-     */
-    public QuizController( int qCount, String qFilename )
-    {
-        this( qCount, new File( qFilename ) );
-    }
-
-    /**
-     * Constructor
-     * @param qCount The number of questions to be asked in the quiz
-     * @param qFilename The name of a quiz file containing quiz questions
-     * and answers
-     * @param showAnswers Toggle to determine if answers are shown
-     * for incorrect choices
-     */
-    public QuizController( int qCount, String qFilename, boolean showAnswers )
-    {
-        this( qCount, new File( qFilename ), showAnswers );
-    }
-
-    /**
-     * Constructor
-     * @param qCount The number of questions to be asked in the quiz
-     * @param qFile A File object containing quiz questions and answers
-     */
-    public QuizController( int qCount, File qFile )
-    {
-        this( qCount, qFile, QuizzerProperties.SHOW_ANSWERS );
-    }
-
-    /**
-     * Constructor
-     * @param qCount The number of questions to be asked in the quiz
-     * @param qFile A File object containing quiz questions and answers
-     * @param showAnswers Toggle to determine if answers are shown
-     * for incorrect selections
-     */
-    public QuizController( int qCount, File qFile, boolean showAnswers  )
-    {
-        this.qCount         = qCount;
-        this.qFile          = qFile;
-        this.showAnswers    = showAnswers;
-        this.quizUser = Unirest.get(QuizzerProperties.API_URL+"qq/userLookup/"+QuizzerProperties.userName).asObject(QuizUser.class).getBody();
-    	this.quizResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookup/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
-    }
 
     /**
      * Initialized the QuizController by indexing the quiz file and creating a
@@ -252,6 +234,22 @@ This normally means that
 	 */
 	public QuizResult[] getQuizResults() {
 		return quizResults;
+	}
+
+
+	/**
+	 * @return the timeLimit
+	 */
+	public long getTimeLimit() {
+		return timeLimit;
+	}
+
+
+	/**
+	 * @param timeLimit the timeLimit to set
+	 */
+	public void setTimeLimit(long timeLimit) {
+		this.timeLimit = timeLimit;
 	}
 
 }

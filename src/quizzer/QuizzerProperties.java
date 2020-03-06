@@ -37,7 +37,8 @@ public class QuizzerProperties
     public static String userHome			      	= System.getProperty("user.home").replace(pathDel, replacepathDel);
     public static String javaHome			      	= System.getProperty("java.home").replace(pathDel, replacepathDel); 
     public static String javaRuntimeVer		      	= System.getProperty("java.runtime.version");
-    public static String userName			      	= System.getProperty("user.name"); 
+    public static String userName			      	= System.getProperty("user.name");
+//    public static String userName			      	= "tholmes";    
     public static String osVersion			      	= System.getProperty("os.version");
     public static String javaVersion			   	= System.getProperty("java.version");
     public static String javaLibPath			   	= System.getProperty("java.library.path");

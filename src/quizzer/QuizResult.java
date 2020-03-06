@@ -1,10 +1,5 @@
 package quizzer;
 
-import java.util.concurrent.CompletableFuture;
-
-import kong.unirest.Empty;
-import kong.unirest.HttpResponse;
-import kong.unirest.JsonNode;
 import kong.unirest.Unirest;
 
 public class QuizResult {
@@ -16,6 +11,7 @@ public class QuizResult {
 	private long QQH_DURATION;
 	private long QQH_START_TS;
 	private String QQH_QUIZ_FILE;
+	private int QQH_QU_ID;
 	private String user;
 	public QuizResult() {}
 	
@@ -64,7 +60,14 @@ public class QuizResult {
 	public int getQQH_GUI() {
 		return QQH_GUI;
 	}
-
+	
+	/**
+	 * @return the QQH_QU_ID
+	 */
+	public int getQQH_QU_ID() {
+		return QQH_QU_ID;
+	}
+	
 	/**
 	 * @return the qQH_OS
 	 */
