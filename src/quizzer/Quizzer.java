@@ -45,19 +45,25 @@ public class Quizzer
     
     public Shell quizShell;
     
+    public long timelimit;
+    
     private QuizController qc = null;
     
     private Boolean quizStart=false;
 	
     private CliParser cliargs; //command line argument parser class
+    
+    private QuizHistory quizHist;
 
 	private boolean qGUI;
 	
 //	private String helpMsg = "";
     public final String helpMsg =
-            "Quizzer [-h] [-n count] [-a show_answers] [-q quiz_file] [-g gui]"
+            "Quizzer [-h] [-l] [-n count] [-a show_answers] [-q quiz_file] [-g gui] [-t time_limit]"
             + QuizzerProperties.EOL
             + "-h : This help message"
+		    + QuizzerProperties.EOL
+		    + "-l : Display the user's log report"
             + QuizzerProperties.EOL
             + "-n : Integer - The number of questions in the quiz"
             + QuizzerProperties.EOL
@@ -65,7 +71,10 @@ public class Quizzer
             + QuizzerProperties.EOL
             + "-q : String - Specify a quiz file with questions"
             + QuizzerProperties.EOL
-            + "-g : Yes|No|Y|N - Enable a graphic user interface.  Default is No. And is disabled when a desktop environment is unavailable";
+            + "-g : Yes|No|Y|N - Enable a graphic user interface.  Default is No. And is disabled when a desktop environment is unavailable"
+		    + QuizzerProperties.EOL
+		    + "-t : Integer - The time limit for the quiz in seconds.  The default is unlimited";
+
 
 
     /**
@@ -81,6 +90,8 @@ public class Quizzer
     	this.qCount = QuizzerProperties.DEFAULT_Q_COUNT;
     	this.showAnswers = QuizzerProperties.SHOW_ANSWERS;
     	this.qFilename = QuizzerProperties.DEFAULT_Q_FILE;
+    	this.timelimit = QuizzerProperties.TIME_LIMIT;
+    	
 
     	if (this.qGUI) {
 	    	this.quizDisplay = new Display ();
@@ -128,6 +139,12 @@ public class Quizzer
 				exit (helpMsg);
 			}
 			
+			if (this.cliargs.switchPresent("-l")) {
+				this.logReport();
+				exit ("Goodbye");
+				
+			}
+			
 			//Check the possible command line arguments
 			if (this.cliargs.switchPresent("-q")) {
 				String argFilename = this.cliargs.switchValue("-q");
@@ -150,6 +167,19 @@ public class Quizzer
 					g2g = false;	
 				}	
 			}
+			
+			if (this.cliargs.switchPresent("-t")) {
+				int argLimit = Integer.parseInt(this.cliargs.switchValue("-t"));
+				
+				//check the count is within limits
+				if (argLimit > 0 ) {
+					this.timelimit = argLimit;
+				} else{
+					output("The time limit must be greater than 0 ");
+					g2g = false;	
+				}	
+			}
+
 			
 			if (this.cliargs.switchPresent("-a")) {
 				String argShow = this.cliargs.switchValue("-a").toLowerCase();
@@ -243,6 +273,9 @@ public class Quizzer
         output( QuizzerProperties.EOL );
         int correct = qc.getCorrect();
         int asked = qc.getAsked();
+        QuizResult[] quizResults = qc.getQuizResults();
+        QuizResult curQuiz = new QuizResult();
+        
         float percentage = (float) correct / (float) asked;
         percentage = percentage * 100;
 
@@ -269,7 +302,8 @@ public class Quizzer
         output( "Elapsed Time: " + formattedElapsedTime + " (" + elapsedTime +" milliseconds)" );
 
         output( QuizzerProperties.EOL );
-
+        curQuiz.setQRdata((qGUI)?1:0, QuizzerProperties.osName, asked, correct, elapsedTime, qc.getStartTime(), this.qFilename, qc.getQuizUser().getQU_LOGIN());
+        curQuiz.saveQR();
         exit( "Quiz Complete." );
     }
     
@@ -289,6 +323,7 @@ public class Quizzer
 	    	QuestionRecord qRecord = null;
 	    	
 	    	this.intro();
+	    	
 	    	qc.setStartTime(System.currentTimeMillis());
 	    	
 	    	while (true) {
@@ -417,6 +452,16 @@ public class Quizzer
     private void intro()
     {
         this.output( QuizzerProperties.EOL + this.qc.INTRO_MESSAGE );
+        this.output( QuizzerProperties.EOL + "Hello "+ qc.getQuizUser().getQU_LOGIN() + " You have taken: "+ qc.getQuizResults().length +" Quizes" );
+    }
+    
+    /**
+     * Displays a message to the standard output. Uses println, so each message ends with a NEWLINE
+     * @param message The message to be displayed
+     */
+    private void logReport( )
+    {
+        System.out.println( "LogReport");
     }
     
     /**

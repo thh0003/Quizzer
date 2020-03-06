@@ -11,6 +11,9 @@ package quizzer;
 import java.io.File;
 import java.util.Vector;
 
+import kong.unirest.GenericType;
+import kong.unirest.Unirest;
+
 public class QuizController
 {
     public final String INTRO_MESSAGE =
@@ -29,10 +32,14 @@ public class QuizController
     private int     asked       = 0;
     private int     correct     = 0;
     private long    startTime   = 0;
+    private long	timeLimit 	= 0;
     private String questionResult="";
 	private int curAnswer=0;
 	private int selectedAnswer=0;
 	private int qState=0;
+	private QuizUser quizUser;
+	private QuizResult[] quizResults;
+	
 
     private QuestionFileReader  qFileReader;
 
@@ -179,7 +186,8 @@ answers
         this.qCount         = qCount;
         this.qFile          = qFile;
         this.showAnswers    = showAnswers;
-
+        this.quizUser = Unirest.get(QuizzerProperties.API_URL+"qq/userLookup/"+QuizzerProperties.userName).asObject(QuizUser.class).getBody();
+    	this.quizResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookup/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
     }
 
     /**
@@ -231,6 +239,20 @@ This normally means that
     		throw Error;
     	}
     }
+
+	/**
+	 * @return the quizUser
+	 */
+	public QuizUser getQuizUser() {
+		return quizUser;
+	}
+
+	/**
+	 * @return the quizResults
+	 */
+	public QuizResult[] getQuizResults() {
+		return quizResults;
+	}
 
 }
 
