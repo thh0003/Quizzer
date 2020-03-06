@@ -1,22 +1,37 @@
 # Quizzer
 # Java Quiz Application
 
-### West Virginia Univeristy - CS - Software Portablility - Programming Assignment #2
+### West Virginia Univeristy - CS - Software Portablility - Programming Assignment #3
 
 ##### Quizzer - Description
 
 Quizzer is a Java application which will take a file with questions and run a quiz based on those questions.
-
 To run a quiz:
-1) Change to the directory of the Quizzer application
-2) Type: ./Quizzer.run (If command line arguments are not set, the default quiz will run)
-3) Command Line Options:
-		Quizzer [-h] [-n count] [-a show_answers] [-q quiz_file] [-g gui]
-		-h : This help message
-		-n : Integer - The number of questions in the quiz
-		-a : Yes|No|Y|N - Option to show the correct answer to incorrect questions
-		-q : String - Specify a quiz file with questions
-		-g : Yes|No|Y|N - Enable a graphic user interface.  Default is No. And is disabled when a desktop environment is unavailable
+1) Type: java -jar /home/tholmes/asg3/Quizzer.jar (If command line arguments are not set, the default quiz will run)
+2) Command Line Options:
+java -jar Quizzer.jar -h
+Quizzer [-h] [-l] [-n count] [-a show_answers] [-q quiz_file] [-g gui] [-t time_limit]
+-h : This help message
+-l : Display the user's log report
+-n : Integer - The number of questions in the quiz
+-a : Yes|No|Y|N - Option to show the correct answer to incorrect questions
+-q : String - Specify a quiz file with questions
+-g : Yes|No|Y|N - Enable a graphic user interface.  Default is No. And is disabled when a desktop environment is unavailable
+-t : Integer - The time limit for the quiz in seconds.  The default is unlimited
+
+Examples:
+
+1) Run a quiz with 5 questions, showing the answers, and a time limit of 60 seconds
+java -jar /home/tholmes/asg3/Quizzer.jar -n 5 -a yes -t 60
+
+2) Show the help screen
+java -jar /home/tholmes/asg3/Quizzer.jar -h 
+
+3) Show the User's Quiz Result History
+java -jar /home/tholmes/asg3/Quizzer.jar -l
+
+4) Run a quiz with your the defaults but with your quiz file (/home/tholmes/as3/QFILES/test100.q.txt)
+java -jar /home/tholmes/asg3/Quizzer.jar -q /home/tholmes/asg3/QFILES/test100.q.txt
 
 NOTE 2: Sample question files are located in the QFILES subfolder.
 
