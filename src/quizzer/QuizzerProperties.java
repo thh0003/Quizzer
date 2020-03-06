@@ -44,6 +44,7 @@ public class QuizzerProperties
     public static String javaVMVer				   	= System.getProperty("java.vm.version");
     public static String javaClassVer			   	= System.getProperty("java.class.version");
     public static String userAppDir				   	= System.getProperty("user.dir").replace(pathDel, replacepathDel);
+    public static String installAppDir				= (osName.startsWith("Linux"))?"/home/tholmes/asg2".replace(pathDel, replacepathDel):System.getProperty("user.dir").replace(pathDel, replacepathDel);
 
     //WINDOWS ENVIRONMENT VARIABLES
     public static String ALLUSERSPROFILE            = (osName.startsWith("Windows"))?System.getenv("ALLUSERSPROFILE").replace(pathDel, replacepathDel):"";
@@ -83,13 +84,17 @@ public class QuizzerProperties
     public static final String LOGO_FILE       		= "wv-logo.png";
     public static final String BACKGROUND_IMAGE_FILE       = "wvu-campus.jpg";
     public static final boolean SHOW_ANSWERS        = true;
+    public static final long TIME_LIMIT        		= 0;
     public static final boolean GUI					= (osName.startsWith("Linux"))?false:true;
+//    public static final boolean GUI					= false;
     public static String EOL                        = (osName.startsWith("Linux"))?UNIX_EOL:(osName.startsWith("Windows"))?WINDOWS_EOL:MAC_EOL;
     
     public static final String WELCOME              = "Welcome to CS533 Quizzer Application " + EOL;
-    public static String QUIZZER_DIR                = userAppDir;
+    public static String QUIZZER_DIR                = installAppDir;
     public static String DEBUG_FILE                 = QUIZZER_DIR + File.separator + "debug.txt";
     public static String DEFAULT_Q_FILE             = QUIZZER_DIR + File.separator + "QFILES" + File.separator + "test10.q.txt";
+    public static final String API_URL       		= "https://quizzer-270214.appspot.com/";
+//    public static final String API_URL       		= "http://localhost:3080/";
     
 
     public static void envQuiz() {
