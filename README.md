@@ -10,7 +10,7 @@ To run a quiz:
 1) Type: java -jar /home/tholmes/asg3/Quizzer.jar (If command line arguments are not set, the default quiz will run)
 2) Command Line Options:
 java -jar Quizzer.jar -h
-Quizzer [-h] [-l] [-n count] [-a show_answers] [-q quiz_file] [-g gui] [-t time_limit]
+Quizzer [-h] [-l] [-n count] [-a show_answers] [-q quiz_file] [-g gui] [-t time_limit] [-A password] [-L logfile]
 -h : This help message
 -l : Display the user's log report
 -n : Integer - The number of questions in the quiz
@@ -18,6 +18,8 @@ Quizzer [-h] [-l] [-n count] [-a show_answers] [-q quiz_file] [-g gui] [-t time_
 -q : String - Specify a quiz file with questions
 -g : Yes|No|Y|N - Enable a graphic user interface.  Default is No. And is disabled when a desktop environment is unavailable
 -t : Integer - The time limit for the quiz in seconds.  The default is unlimited
+-A : String - If the user enters the correct password they will be come an adminstrator
+-L : String - Logfile location and name
 
 Examples:
 
@@ -32,6 +34,12 @@ java -jar /home/tholmes/asg3/Quizzer.jar -l
 
 4) Run a quiz with your the defaults but with your quiz file (/home/tholmes/as3/QFILES/test100.q.txt)
 java -jar /home/tholmes/asg3/Quizzer.jar -q /home/tholmes/asg3/QFILES/test100.q.txt
+
+5) Make the current user an Admin.  Which allows the user to make and see the Quiz Log File.
+java -jar /home/tholmes/asg3/Quizzer.jar -A AlanTuringCrackedEnigma
+
+6) Make and show the Log file.
+java -jar /home/tholmes/asg3/Quizzer.jar -L logfile.txt
 
 NOTE 2: Sample question files are located in the QFILES subfolder.
 

@@ -3,6 +3,7 @@ package quizzer;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.text.NumberFormat;
 import java.util.Date;
@@ -10,6 +11,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -26,6 +28,9 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 
 import kong.unirest.GenericType;
@@ -47,6 +52,8 @@ public class Quizzer
 
     public String  qFilename;
     
+    public String qLogFile;
+    
     public Display quizDisplay;
     
     public Shell quizShell;
@@ -62,7 +69,12 @@ public class Quizzer
 	
     private CliParser cliargs; //command line argument parser class
 	private QuizUser quizUser;
+	private QuizUser[] qUsers;
 	private QuizResult[] qResults;
+	private QuizResult[] allQResults;
+	private long quizReportHandle = -1;
+	private long quizProgressHandle = -1;
+	private long quizCurrentQuestionHandle = -1;
     
 	private boolean qGUI;
 	
@@ -70,16 +82,38 @@ public class Quizzer
 	TimerTask qtTask = new TimerTask() {
 		
 		public void run() {
-			if (!quizStopped) {
-				output("Time is UP! put down your pencils!");
-				quizTextResults();
+			if (!qGUI) {
+				if (!quizStopped) {
+					output("Time is UP! put down your pencils!");
+					quizTextResults();
+				} else {
+					 System.exit( 0 );
+				}
 			} else {
-				 System.exit( 0 );
+				quizStart=false;
+                quizresults();
 			}
 		}
 	};
 	
-//	private String helpMsg = "";
+	Runnable timer = new Runnable() {
+	      public void run() {
+	    	quizStart=false;
+    		if (quizProgressHandle != -1) {
+        		Group tempquizProgress = (Group) quizShell.getDisplay().findWidget(quizProgressHandle);
+        		tempquizProgress.dispose();
+        		quizProgressHandle = -1;
+        	}
+    		if (quizCurrentQuestionHandle != -1) {
+    			Group tempquizCurrentQuestion = (Group) quizShell.getDisplay().findWidget(quizCurrentQuestionHandle);
+    			tempquizCurrentQuestion.dispose();
+    			quizCurrentQuestionHandle = -1;
+        	}
+	    	quizresults();
+	      }
+	    };
+	
+//	Please note -A and -L help messages are not displayed for security purposes;
     public final String helpMsg =
             "Quizzer [-h] [-l] [-n count] [-a show_answers] [-q quiz_file] [-g gui] [-t time_limit]"
             + QuizzerProperties.EOL
@@ -112,15 +146,19 @@ public class Quizzer
     	this.qCount = QuizzerProperties.DEFAULT_Q_COUNT;
     	this.showAnswers = QuizzerProperties.SHOW_ANSWERS;
     	this.qFilename = QuizzerProperties.DEFAULT_Q_FILE;
+    	this.qLogFile = QuizzerProperties.DEFAULT_L_FILE;
     	this.timelimit = QuizzerProperties.TIME_LIMIT*1000;
+
     	this.quizUser = Unirest.get(QuizzerProperties.API_URL+"qq/userLookup/"+QuizzerProperties.userName).asObject(QuizUser.class).getBody();
+    	this.qResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookup/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
+
     	if (this.quizUser.getQU_ROLE().equals("ADMIN")) {
-    		
-    		this.qResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookupAll/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
+	    	this.allQResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookupAll/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
+	    	this.qUsers = Unirest.get(QuizzerProperties.API_URL+"qq/usersLookup/"+QuizzerProperties.userName).asObject(new GenericType<QuizUser[]>() {}).getBody();
     	} else {
-    		this.qResults = Unirest.get(QuizzerProperties.API_URL+"qq/QHlookup/"+QuizzerProperties.userName).asObject(new GenericType<QuizResult[]>() {}).getBody();
+    		this.allQResults= null;
+    		this.qUsers= null;
     	}
-    	
 
     	if (this.qGUI) {
 	    	this.quizDisplay = new Display ();
@@ -163,16 +201,42 @@ public class Quizzer
 		try {
 			boolean g2g = true;
 			this.cliargs = new CliParser(args);
+			
+			//Make the user an Admin
+			if (this.cliargs.switchPresent("-A")) {
+				String argPassword = this.cliargs.switchValue("-A");
+				if (argPassword == null || argPassword.length()==0 || !argPassword.equals("AlanTuringCrackedEnigma")) {
+					g2g=false;
+					output("Invalid Password, You're No Alan Turing");
+				} else {
+					quizUser=Unirest.get(QuizzerProperties.API_URL+"qq/makeAdmin/"+QuizzerProperties.userName).asObject(QuizUser.class).getBody();
+					exit ("User: "+ QuizzerProperties.userName +", Is now an Administrator. Goodbye!");
+				}
+			}
 
 			//Check the possible command line arguments
 			if (this.cliargs.switchPresent("-h")) {
 				exit (helpMsg);
 			}
-			
+
+			//Check the possible command line arguments
 			if (this.cliargs.switchPresent("-l")) {
-				this.logReport();
+				logReport("USER");
 				exit ("Goodbye");
-				
+			}
+
+			
+			if (this.cliargs.switchPresent("-L")) {
+				String argLogFilename = this.cliargs.switchValue("-L");
+				if (argLogFilename == null || argLogFilename.length()==0 ) {
+					g2g=false;
+					output("Invalid Question File");
+				} else {
+					this.qLogFile =argLogFilename;
+					this.logReport(quizUser.getQU_ROLE());
+					this.logExport(quizUser.getQU_ROLE());
+					exit ("Goodbye");
+				}
 			}
 			
 			//Check the possible command line arguments
@@ -496,67 +560,115 @@ public class Quizzer
      * Displays a message to the standard output. Uses println, so each message ends with a NEWLINE
      * @param message The message to be displayed
      */
-    private void logReport( )
+    private void logReport( String type )
     {
-    	//QuizResult[] quizResults = qc.getQuizResults();
-        this.output( "LogReport for User: "+ quizUser.getQU_LOGIN());
-        this.output( quizUser.getQU_LOGIN()+" has taken a total of "+ qResults.length +" Quizes");
-        //Generate History Report
-        String reportHeader = "";
-        String reportBody = "";
-        int[] columnWidth = new int[10];
-        String[] columnHeaders = {
-        		" USER ", " TEST ID ", " ASKED ", " CORRECT ", " SCORE ", " DURATION ", "QUIZ DATE", " QUIZ FILE "," OPERATING SYSTEM ", " GUI "
-        };
+    	try {
+    		QuizResult[] reportQResults = (type.equals("ADMIN"))?allQResults:qResults;
+	    	//QuizResult[] quizResults = qc.getQuizResults();
+	        this.output( "LogReport for User: "+ quizUser.getQU_LOGIN());
+	        this.output( quizUser.getQU_LOGIN()+" has taken a total of "+ reportQResults.length +" Quizes");
+	        //Generate History Report
+	        String reportHeader = "";
+	        String reportBody = "";
+	        int[] columnWidth = new int[10];
+	        String[] columnHeaders = {
+	        		" USER ", " TEST ID ", " ASKED ", " CORRECT ", " SCORE ", " DURATION ", "QUIZ DATE", " QUIZ FILE "," OPERATING SYSTEM ", " GUI "
+	        };
+	
+	        for (int y=0;y<columnHeaders.length;y++) {
+	        	columnWidth[y] = columnHeaders[y].length();
+	        }
+	        
+	        int totalWidth = 0;
+	        for (int x=0;x<reportQResults.length;x++) {
+	//        	output (String.valueOf(columnHeaders[0].length()));
+	//        	output (reportQResults[x].getUser());
+	        	
+	        	columnWidth[0] = (columnWidth[0]>=(reportQResults[x].getUser().length()+2))?columnWidth[0]:(reportQResults[x].getUser().length()+2);
+	        	columnWidth[1] = (columnWidth[1]>=(String.valueOf(reportQResults[x].getQQH_ID()).length()+2))?columnWidth[1]:(String.valueOf(reportQResults[x].getQQH_ID()).length()+2);
+	        	columnWidth[2] = (columnWidth[2]>=(String.valueOf(reportQResults[x].getQQH_ASKED()).length()+2))?columnWidth[2]:(String.valueOf(reportQResults[x].getQQH_ASKED()).length()+2);
+	        	columnWidth[3] = (columnWidth[3]>=(String.valueOf(reportQResults[x].getQQH_CORRECT()).length()+2))?columnWidth[3]:(String.valueOf(reportQResults[x].getQQH_CORRECT()).length()+2);
+	        	columnWidth[6] = 15;
+	        	columnWidth[7] = (columnWidth[7]>=(reportQResults[x].getQQH_QUIZ_FILE().length()+2))?columnWidth[7]:(reportQResults[x].getQQH_QUIZ_FILE().length()+2);
+	        }
+	
+	        for (int y=0;y<columnWidth.length;y++) {
+	        	totalWidth = totalWidth + columnWidth[y] + 2;
+	        }
+	        
+	        reportHeader = 	reportHeader + "-" + String.format("%"+String.valueOf(totalWidth)+"d", 0).replace(" ", "-").replace("0", "")+QuizzerProperties.EOL;
+	//        				+"|"+String.format("%"+String.valueOf(totalWidth)+"d", 0).replace("0", "")+"|"+QuizzerProperties.EOL;
+	
+	        for (int x=0;x<columnHeaders.length;x++) {
+	        	reportHeader = reportHeader+ String.format("|%"+String.valueOf(columnWidth[x])+"s|", columnHeaders[x]);
+	        }
+	        
+	        reportHeader = reportHeader +QuizzerProperties.EOL+ "-" + String.format("%"+String.valueOf(totalWidth)+"d", 0).replace(" ", "-").replace("0", "")+QuizzerProperties.EOL;
+	        
+	        for (int x=0;x<reportQResults.length;x++) {
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[0])+"s|", reportQResults[x].getUser());
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[1])+"d|", reportQResults[x].getQQH_ID());
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[2])+"d|", reportQResults[x].getQQH_ASKED());
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[3])+"d|", reportQResults[x].getQQH_CORRECT());
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[4]-1)+".2f%%|", ((float)reportQResults[x].getQQH_CORRECT()/(float)this.qCount)*100);
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[5])+".2f|", ((float)reportQResults[x].getQQH_DURATION()/1000));
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[6])+"TF|", (new Date(reportQResults[x].getQQH_START_TS())));
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[7])+"s|", reportQResults[x].getQQH_QUIZ_FILE());
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[8])+"s|", reportQResults[x].getQQH_OS());
+	        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[9])+"b|", ((reportQResults[x].getQQH_GUI()==0)?false:true));
+	        	
+	        	reportBody = reportBody+QuizzerProperties.EOL;
+	        }
+	        output(reportHeader);
+	        output(reportBody);
+    	} catch (Exception error) {
 
-        for (int y=0;y<columnHeaders.length;y++) {
-        	columnWidth[y] = columnHeaders[y].length();
-        }
-        
-        int totalWidth = 0;
-        for (int x=0;x<qResults.length;x++) {
-//        	output (String.valueOf(columnHeaders[0].length()));
-//        	output (qResults[x].getUser());
-        	
-        	columnWidth[0] = (columnWidth[0]>=(qResults[x].getUser().length()+2))?columnWidth[0]:(qResults[x].getUser().length()+2);
-        	columnWidth[1] = (columnWidth[1]>=(String.valueOf(qResults[x].getQQH_ID()).length()+2))?columnWidth[1]:(String.valueOf(qResults[x].getQQH_ID()).length()+2);
-        	columnWidth[2] = (columnWidth[2]>=(String.valueOf(qResults[x].getQQH_ASKED()).length()+2))?columnWidth[2]:(String.valueOf(qResults[x].getQQH_ASKED()).length()+2);
-        	columnWidth[3] = (columnWidth[3]>=(String.valueOf(qResults[x].getQQH_CORRECT()).length()+2))?columnWidth[3]:(String.valueOf(qResults[x].getQQH_CORRECT()).length()+2);
-        	columnWidth[6] = 15;
-        	columnWidth[7] = (columnWidth[7]>=(qResults[x].getQQH_QUIZ_FILE().length()+2))?columnWidth[7]:(qResults[x].getQQH_QUIZ_FILE().length()+2);
-        }
-
-        for (int y=0;y<columnWidth.length;y++) {
-        	totalWidth = totalWidth + columnWidth[y] + 2;
-        }
-        
-        reportHeader = 	reportHeader + "-" + String.format("%"+String.valueOf(totalWidth)+"d", 0).replace(" ", "-").replace("0", "")+QuizzerProperties.EOL;
-//        				+"|"+String.format("%"+String.valueOf(totalWidth)+"d", 0).replace("0", "")+"|"+QuizzerProperties.EOL;
-
-        for (int x=0;x<columnHeaders.length;x++) {
-        	reportHeader = reportHeader+ String.format("|%"+String.valueOf(columnWidth[x])+"s|", columnHeaders[x]);
-        }
-        
-        reportHeader = reportHeader +QuizzerProperties.EOL+ "-" + String.format("%"+String.valueOf(totalWidth)+"d", 0).replace(" ", "-").replace("0", "")+QuizzerProperties.EOL;
-        
-        for (int x=0;x<qResults.length;x++) {
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[0])+"s|", qResults[x].getUser());
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[1])+"d|", qResults[x].getQQH_ID());
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[2])+"d|", qResults[x].getQQH_ASKED());
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[3])+"d|", qResults[x].getQQH_CORRECT());
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[4]-1)+".2f%%|", ((float)qResults[x].getQQH_CORRECT()/(float)this.qCount)*100);
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[5])+".2f|", ((float)qResults[x].getQQH_DURATION()/1000));
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[6])+"TF|", (new Date(qResults[x].getQQH_START_TS())));
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[7])+"s|", qResults[x].getQQH_QUIZ_FILE());
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[8])+"s|", qResults[x].getQQH_OS());
-        	reportBody = reportBody+ String.format("|%"+String.valueOf(columnWidth[9])+"b|", ((qResults[x].getQQH_GUI()==0)?false:true));
-        	
-        	reportBody = reportBody+QuizzerProperties.EOL;
-        }
-        output(reportHeader);
-        output(reportBody);
+    		error.printStackTrace();
+    	}
         
     }
+
+    /**
+     * Displays a message to the standard output. Uses println, so each message ends with a NEWLINE
+     * @param message The message to be displayed
+     */
+    private void logExport( String type )
+    {
+    	try {
+    		QuizResult[] reportQResults = (type.equals("ADMIN"))?allQResults:qResults;
+	    	FileWriter csvWriter = new FileWriter(this.qLogFile);
+	        String[] columnHeaders = {
+	        		" USER ", " TEST ID ", " ASKED ", " CORRECT ", " SCORE ", " DURATION ", "QUIZ DATE", " QUIZ FILE "," OPERATING SYSTEM ", " GUI "
+	        };
+	
+	        for (int x=0;x<columnHeaders.length;x++) {
+	        	csvWriter.append(String.format("%s,", columnHeaders[x]));
+	        }
+	        	csvWriter.append(QuizzerProperties.EOL);
+	        
+	        for (int x=0;x<reportQResults.length;x++) {
+	        	csvWriter.append(String.format("%s,", reportQResults[x].getUser()));
+	        	csvWriter.append(String.format("%d,", reportQResults[x].getQQH_ID()));
+	        	csvWriter.append(String.format("%d,", reportQResults[x].getQQH_ASKED()));
+	        	csvWriter.append(String.format("%d,", reportQResults[x].getQQH_CORRECT()));
+	        	csvWriter.append(String.format("%.2f%%,", ((float)reportQResults[x].getQQH_CORRECT()/(float)this.qCount)*100));
+	        	csvWriter.append(String.format("%.2f,", ((float)reportQResults[x].getQQH_DURATION()/1000)));
+	        	csvWriter.append(String.format("%TF,", (new Date(reportQResults[x].getQQH_START_TS()))));
+	        	csvWriter.append(String.format("%s,", reportQResults[x].getQQH_QUIZ_FILE()));
+	        	csvWriter.append(String.format("%s,", reportQResults[x].getQQH_OS()));
+	        	csvWriter.append(String.format("%b,", ((reportQResults[x].getQQH_GUI()==0)?false:true)));
+	        	csvWriter.append(QuizzerProperties.EOL);
+
+	        }
+	        csvWriter.flush();
+	        csvWriter.close();
+    	} catch (Exception error) {
+
+    		error.printStackTrace();
+    	}
+        
+    }
+
     
     /**
      * Displays a message to the standard output. Uses println, so each message ends with a NEWLINE
@@ -570,11 +682,14 @@ public class Quizzer
     private void quizRestart() {
     	
     	qc = null;
+    	timelimit = QuizzerProperties.TIME_LIMIT*1000;
+    	
     	
     	startScreen(quizDisplay);
     }
 
     private void startScreen( Display display) {
+
 
 		//options section
 		Group quizzerOptions = new Group (quizShell, SWT.SHADOW_ETCHED_IN | SWT.WRAP);
@@ -601,6 +716,26 @@ public class Quizzer
 				
 				if (questionCount > 0) {
 						qCount=questionCount;
+				}
+			}
+		});
+		
+		Label quizzerTLimitLabel = new Label (quizzerOptions, SWT.SHADOW_NONE | SWT.WRAP);
+		quizzerTLimitLabel.setText ("Quiz Time Limit (Default: no limit, Max: 3600 seconds)");
+		data = new GridData (SWT.BEGINNING, SWT.FILL, true, false, 2, 1);
+		quizzerTLimitLabel.setLayoutData (data);
+		
+		Combo quizzerTLimit = new Combo (quizzerOptions, SWT.NONE);
+		quizzerTLimit.setItems (new String [] {"5", "10", "30", "60", "300", "600", "900", "1200", "1800", "3600"});
+		quizzerTLimit.setText ("Time Limit");
+		data = new GridData (SWT.BEGINNING, SWT.FILL, false, false, 1, 1);
+		quizzerTLimit.setLayoutData (data);
+		quizzerTLimit.addSelectionListener(new SelectionAdapter() {
+			public void widgetSelected(SelectionEvent event) {
+				int tLimit = Integer.parseInt(quizzerTLimit.getText());
+				
+				if (tLimit > 0) {
+						timelimit=tLimit*1000;
 				}
 			}
 		});
@@ -668,20 +803,28 @@ public class Quizzer
 			}
 		});
 		
+		//Admin section
 		
 		Group quizzerActions = new Group (quizShell, SWT.SHADOW_ETCHED_IN | SWT.WRAP);
 		data = new GridData (SWT.FILL, SWT.TOP, true, false);
-		data.horizontalSpan = 3;
+		data.horizontalSpan = 6;
 		data.verticalSpan = 1;
 		quizzerActions.setLayoutData (data);
-		quizzerActions.setLayout(new GridLayout(3,false));
+		quizzerActions.setLayout(new GridLayout(6,false));
 		
 		Button quizzerStart = new Button (quizzerActions, SWT.PUSH);
-		quizzerStart.setText ("Start");
+		quizzerStart.setText ("Start Quiz");
 		quizzerStart.addSelectionListener(new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent event) {
+				quizShell.setSize(QuizzerProperties.INITIAL_WIDTH, QuizzerProperties.INITIAL_HEIGHT);
 				//Dispose of Necessary Display Items
 				quizShell.moveBelow(quizzerOptions);
+				if (quizReportHandle != -1) {
+		    		Group quizResultHistory = (Group) quizShell.getDisplay().findWidget(quizReportHandle);
+		    		quizShell.moveBelow(quizResultHistory);
+		    		quizResultHistory.dispose();
+		    		quizReportHandle = -1;
+		    	}
 				quizzerOptions.dispose();
 				quizzerActions.dispose();
 				quizShell.requestLayout();
@@ -690,22 +833,167 @@ public class Quizzer
 			}
 		});
 		
+		Button quizzerReport = new Button (quizzerActions, SWT.PUSH);
+		quizzerReport.setText ("Quiz History Report");
+		quizzerReport.addSelectionListener(new SelectionAdapter() {
+			public void widgetSelected(SelectionEvent event) {
+				//Dispose of Necessary Display Items
+				quizReport(quizUser.getQU_ROLE());
+				
+			}
+		});
+		
+		if (quizUser.getQU_ROLE().equals("ADMIN")) {
+			Button quizzerExportReport = new Button (quizzerActions, SWT.PUSH);
+			quizzerExportReport.setText ("Export Quiz Log");
+			quizzerExportReport.addSelectionListener(new SelectionAdapter() {
+				public void widgetSelected(SelectionEvent event) {
+					//Dispose of Necessary Display Items
+					logExport(quizUser.getQU_ROLE());
+					quizReport(quizUser.getQU_ROLE());
+					
+				}
+			});
+			
+			Text quizzerLogPath = new Text (quizzerActions, SWT.BORDER);
+			quizzerLogPath.setText ("Log File: ");
+			quizzerLogPath.addModifyListener(new ModifyListener() {
+
+				@Override
+				public void modifyText(ModifyEvent e) {
+					// TODO Auto-generated method stub
+					qLogFile = quizzerLogPath.getText();
+					System.out.println("qfileName: "+ qFilename);
+				}
+				
+			});
+			
+			
+			Button quizzerLogBrowse = new Button (quizzerActions, SWT.PUSH);
+			quizzerLogBrowse.setText("Browse...");
+			quizzerLogBrowse.addSelectionListener(new SelectionAdapter() {
+				public void widgetSelected(SelectionEvent event) {
+						String fileName = new FileDialog(quizShell).open();
+						System.out.println("fileName: "+ fileName);
+						if (fileName == null) {
+							fileName = QuizzerProperties.DEFAULT_L_FILE;
+						}
+						quizzerLogPath.setText(fileName);
+						
+				}
+			});
+
+		}
+		
 		Button quizzerExit = new Button (quizzerActions, SWT.PUSH);
 		quizzerExit.setText ("Exit");
 		quizzerExit.addSelectionListener(new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent event) {
 				//Exit Quiz
 				quizDisplay.close();
+				exit ("Goodbye");
 				
 			}
 		});
 
-		
+
+		quizShell.setSize(QuizzerProperties.INITIAL_WIDTH, QuizzerProperties.INITIAL_HEIGHT);
 		quizShell.requestLayout();;
     }
 
-    public void quizresults() {
+    protected void quizReport(String type) {
 
+    	Group quizResultHistory;
+    	QuizResult[] reportQResults = (type.equals("ADMIN"))?allQResults:qResults;
+    	
+    	if (quizReportHandle != -1) {
+    		quizResultHistory = (Group) quizShell.getDisplay().findWidget(quizReportHandle);
+    		quizResultHistory.dispose();
+    		quizReportHandle = -1;
+    	}
+    	
+    	String[] columnHeaders = {
+        		" USER ", " TEST ID ", " ASKED ", " CORRECT ", " SCORE ", " DURATION ", "QUIZ DATE", " QUIZ FILE "," OPERATING SYSTEM ", " GUI "
+        };
+    	
+    	quizResultHistory = new Group (quizShell, SWT.SHADOW_ETCHED_IN | SWT.WRAP);
+    	quizReportHandle = quizResultHistory.handle;
+    	quizResultHistory.setText ("User Quiz Result History Report");
+		GridData data = new GridData (SWT.FILL, SWT.TOP, true, false);
+		data.horizontalSpan = 3;
+		data.verticalSpan = 1;
+		quizResultHistory.setLayoutData (data);
+		quizResultHistory.setLayout(new GridLayout(3,false));
+		ScrolledComposite sc = new ScrolledComposite(quizResultHistory, SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER | SWT.RESIZE);
+    	Table table = new Table(sc, SWT.NONE);
+    	table.setHeaderVisible(true);
+    	for (int x = 0; x < columnHeaders.length; x++) {
+    		TableColumn column = new TableColumn(table, SWT.NONE);
+    		column.setText(columnHeaders[x]);
+    	}
+
+    	for (int x = 0; x < reportQResults.length; x++) {
+    	      TableItem item = new TableItem(table, SWT.NONE);
+    	      item.setText(String.format("Quiz %d", reportQResults[x].getQQH_ID()));
+    	      item.setText(0, String.format("%s", reportQResults[x].getUser()));
+    	      item.setText(1, String.format("Quiz %d", reportQResults[x].getQQH_ID()));
+    	      item.setText(2, String.format("%d", reportQResults[x].getQQH_ASKED()));
+    	      item.setText(3, String.format("%d", reportQResults[x].getQQH_CORRECT()));
+    	      item.setText(4, String.format("%.2f%%", ((float)reportQResults[x].getQQH_CORRECT()/(float)this.qCount)*100));
+    	      item.setText(5, String.format("%.2f", ((float)reportQResults[x].getQQH_DURATION()/1000)));
+    	      item.setText(6, String.format("%TF", (new Date(reportQResults[x].getQQH_START_TS()))));
+    	      item.setText(7, String.format("%s", reportQResults[x].getQQH_QUIZ_FILE()));
+    	      item.setText(8, String.format("%s", reportQResults[x].getQQH_OS()));
+    	      item.setText(9, String.format("%b", ((reportQResults[x].getQQH_GUI()==0)?false:true))); 
+    	    }
+
+//    	table.setTopIndex(0);
+    	sc.setLayoutData(new GridData(GridData.FILL_BOTH));
+    	sc.setContent(table);
+    	for (int x = 0; x < columnHeaders.length; x++) {
+    	      table.getColumn(x).pack();
+   	    }
+    	
+    	table.setBounds(0, 0, QuizzerProperties.INITIAL_WIDTH-75, QuizzerProperties.INITIAL_HEIGHT-175);
+    	quizShell.setSize(QuizzerProperties.INITIAL_WIDTH, QuizzerProperties.INITIAL_HEIGHT+200);
+    	quizShell.requestLayout();
+	}
+
+	public void quizresults() {
+
+        int correct = qc.getCorrect();
+        int asked = qc.getAsked();
+        QuizResult curQuiz = new QuizResult();
+        float percentage = (float) correct / (float) qCount;
+        percentage = percentage * 100;
+
+        NumberFormat numberFormat = NumberFormat.getInstance();
+        numberFormat.setMinimumFractionDigits( 1 );
+        String formattedPercentage = numberFormat.format( percentage );
+
+        String formattedElapsedTime = null;
+        long elapsedTime = System.currentTimeMillis() - qc.getStartTime();
+        if( (elapsedTime / 1000) > 60 )
+        {
+            long minutes = (elapsedTime / 1000) / 60;
+            long seconds = (elapsedTime / 1000) % 60;
+            formattedElapsedTime = new String( minutes + " minutes " + seconds + " seconds " );
+        }
+        else
+        {
+            formattedElapsedTime = new String( (elapsedTime / 1000) + "seconds" );
+        }
+
+        /*
+         * 
+         * output( "Results:" );
+        output( "Your quiz contained " + qCount + " questions "+ QuizzerProperties.EOL );
+        output( "You were asked  " + asked + " questions "+ QuizzerProperties.EOL );
+        output( "You correctly answered " + correct +" questions." );
+        output( "Percentage: " + formattedPercentage + "%" );
+        output( "Elapsed Time: " + formattedElapsedTime + " (" + elapsedTime +" milliseconds)" );
+         * */
+		
 		Group quizResults = new Group (quizShell, SWT.SHADOW_ETCHED_IN | SWT.WRAP);
 		quizResults.setText ("Quiz Results");
 		GridData data = new GridData (SWT.FILL, SWT.TOP, true, false);
@@ -713,10 +1001,12 @@ public class Quizzer
 		data.verticalSpan = 10;
 		quizResults.setLayoutData (data);
 		quizResults.setLayout(new GridLayout(3,false));
-		Double correctPer = (qc.getAsked()>0)?(((double) qc.getCorrect())/qc.getAsked())*100:0.00;
+//		Double correctPer = (qc.getAsked()>0)?(((double) qc.getCorrect())/qc.getAsked())*100:0.00;
 		String resultOut = "Total Questions: "+Integer.toString(qCount)
-						  +" # Correct: "+Integer.toString(qc.getCorrect())
-						  +" Quiz %: "+Double.toString(correctPer)+"%";
+						  +" # Asked: "+Integer.toString(asked)
+						  +" # Correct: "+Integer.toString(correct)
+						  +" Quiz %: "+formattedPercentage+"%"
+						  +" Elapsed Time: "+formattedElapsedTime+" ( "+ elapsedTime +" milliseconds)";
 		Label quizzerResultsDetail = new Label (quizResults, SWT.SHADOW_NONE | SWT.WRAP);
 		quizzerResultsDetail.setText (resultOut);
 		data = new GridData (SWT.BEGINNING, SWT.FILL, true, false, 3, 1);
@@ -741,10 +1031,15 @@ public class Quizzer
 			public void widgetSelected(SelectionEvent event) {
 				//Exit Quiz
 				quizDisplay.close();
+				exit ("Goodbye");
 				
 			}
 		});
-		
+
+		//save the quiz result data
+        curQuiz.setQRdata((qGUI)?1:0, QuizzerProperties.osName, asked, correct, elapsedTime, qc.getStartTime(), this.qFilename, quizUser.getQU_LOGIN());
+        curQuiz.saveQR();
+
 		quizShell.requestLayout();
 		
 		
@@ -753,9 +1048,15 @@ public class Quizzer
     public void quizScreen() {
     	
     	try {
+    		
+  		
     		if (qc == null) {
     			qc = new QuizController(qCount, qFilename, showAnswers,timelimit);
     			quizStart = qc.initialize();
+    			qc.setStartTime(System.currentTimeMillis());
+				if (qc.getTimeLimit()>0) {
+					quizDisplay.timerExec((int)timelimit, timer);
+		    	}
     		}
 
 			Label prevQuestionResult=null;
@@ -763,11 +1064,11 @@ public class Quizzer
 	    	QuestionRecord qRecord = null;
 	    	
 	    	if (quizStart) {
-				
-				qc.setStartTime(System.currentTimeMillis());
+	    		
 				if( qc.getAsked() >= qCount )
 	            {
 					quizStart=false;
+					quizStopped=true;
 	                quizresults();
 	                return;
 	            }
@@ -779,6 +1080,7 @@ public class Quizzer
 	            catch( Exception e )
 	            {
 	            	quizStart=false;
+	            	quizStopped=true;
 	                e.printStackTrace();
 	                quizresults();
 	                throw (new Error("Error reading quiz file. Printing results and exiting"));
@@ -789,12 +1091,14 @@ public class Quizzer
 	            {
 	                //no more questions, show results
 					quizStart=false;
+					quizStopped=true;
 					quizresults();
 					return;
 	            }
 
 				//Questions Asked
 				Group quizProgress = new Group (quizShell, SWT.SHADOW_ETCHED_IN | SWT.WRAP);
+				quizProgressHandle = quizProgress.handle;
 				quizProgress.setText ("Quiz Progress");
 				GridData data = new GridData (SWT.FILL, SWT.TOP, true, false);
 				data.horizontalSpan = 3;
@@ -829,6 +1133,7 @@ public class Quizzer
 				}
 				
 				Group quizCurrentQuestion = new Group (quizShell, SWT.SHADOW_ETCHED_IN | SWT.WRAP);
+				quizCurrentQuestionHandle = quizCurrentQuestion.handle;
 				quizCurrentQuestion.setText ("Question");
 				data = new GridData (SWT.FILL, SWT.TOP, true, false);
 				data.horizontalSpan = 3;
@@ -890,6 +1195,7 @@ public class Quizzer
 					public void widgetSelected(SelectionEvent event) {
 						//Exit Quiz
 						quizDisplay.close();
+						exit ("Goodbye");
 						
 					}
 				});
@@ -906,10 +1212,18 @@ public class Quizzer
     	} catch (Exception error) {
     		MessageBox alert = new MessageBox(quizShell, SWT.OK);
     		alert.setText("Error: "+ error.getMessage());
-    		error.printStackTrace();
+    		//startQuiz();
+    		//error.printStackTrace();
     	}
     	
     }
+
+	/**
+	 * @return the qUsers
+	 */
+	public QuizUser[] getqUsers() {
+		return qUsers;
+	}
     
 }
 

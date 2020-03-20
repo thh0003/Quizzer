@@ -94,6 +94,7 @@ public class QuizzerProperties
     public static String QUIZZER_DIR                = installAppDir;
     public static String DEBUG_FILE                 = QUIZZER_DIR + File.separator + "debug.txt";
     public static String DEFAULT_Q_FILE             = QUIZZER_DIR + File.separator + "QFILES" + File.separator + "test10.q.txt";
+    public static String DEFAULT_L_FILE				= QUIZZER_DIR + File.separator + "quizLog.csv";
     public static final String API_URL       		= "https://quizzer-270214.appspot.com/";
 //    public static final String API_URL       		= "http://localhost:3080/";
     
