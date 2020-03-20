@@ -37,7 +37,8 @@ public class QuizzerProperties
     public static String userHome			      	= System.getProperty("user.home").replace(pathDel, replacepathDel);
     public static String javaHome			      	= System.getProperty("java.home").replace(pathDel, replacepathDel); 
     public static String javaRuntimeVer		      	= System.getProperty("java.runtime.version");
-    public static String userName			      	= System.getProperty("user.name"); 
+    public static String userName			      	= System.getProperty("user.name");
+   
     public static String osVersion			      	= System.getProperty("os.version");
     public static String javaVersion			   	= System.getProperty("java.version");
     public static String javaLibPath			   	= System.getProperty("java.library.path");
@@ -93,6 +94,7 @@ public class QuizzerProperties
     public static String QUIZZER_DIR                = installAppDir;
     public static String DEBUG_FILE                 = QUIZZER_DIR + File.separator + "debug.txt";
     public static String DEFAULT_Q_FILE             = QUIZZER_DIR + File.separator + "QFILES" + File.separator + "test10.q.txt";
+    public static String DEFAULT_L_FILE				= QUIZZER_DIR + File.separator + "quizLog.csv";
     public static final String API_URL       		= "https://quizzer-270214.appspot.com/";
 //    public static final String API_URL       		= "http://localhost:3080/";
     

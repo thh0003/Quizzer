@@ -1,8 +1,7 @@
 package quizzer;
 
 public class startQuizzer{
-
-
+	
 /**
      * The main method for invoking Quizzer.
      * @param args Command line arguments
@@ -12,10 +11,9 @@ public class startQuizzer{
     {
         try
         {
-        	
         	Quizzer quiz = new Quizzer(args);
-
         	quiz.startQuiz();
+        	
         }
         catch( Exception e )
         {
